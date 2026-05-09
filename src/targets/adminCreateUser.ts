@@ -13,6 +13,7 @@ import {
   attributesInclude,
   attributeValue,
   type User,
+  validateEmailAttribute,
   validatePhoneNumberAttribute,
 } from "../services/userPoolService";
 import { userToResponseObject } from "./responses";
@@ -100,6 +101,7 @@ export const AdminCreateUser =
   }: AdminCreateUserServices): AdminCreateUserTarget =>
   async (ctx, req) => {
     validatePhoneNumberAttribute(req.UserAttributes);
+    validateEmailAttribute(req.UserAttributes);
 
     const userPool = await cognito.getUserPool(ctx, req.UserPoolId);
     const existingUser = await userPool.getUserByUsername(ctx, req.Username);
