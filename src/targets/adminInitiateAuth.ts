@@ -128,7 +128,7 @@ const adminUserPasswordAuthFlow = async (
       IdToken: tokens.IdToken,
       NewDeviceMetadata: undefined,
       TokenType: undefined,
-      ExpiresIn: undefined,
+      ExpiresIn: tokens.ExpiresIn,
     },
   };
 };
@@ -185,7 +185,7 @@ const refreshTokenAuthFlow = async (
       IdToken: tokens.IdToken,
       NewDeviceMetadata: undefined,
       TokenType: undefined,
-      ExpiresIn: undefined,
+      ExpiresIn: tokens.ExpiresIn,
     },
   };
 };

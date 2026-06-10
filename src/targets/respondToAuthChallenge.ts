@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import type {
   DeliveryMediumType,
   RespondToAuthChallengeRequest,
@@ -11,6 +12,7 @@ import {
   UnsupportedError,
 } from "../errors";
 import type { Services } from "../services";
+import * as srp from "../services/srp";
 import { verify as verifyTotp } from "../services/totp";
 import {
   attributeValue,
@@ -94,7 +96,8 @@ export const RespondToAuthChallenge =
     if (!req.ChallengeResponses.USERNAME) {
       throw new InvalidParameterError("Missing required parameter USERNAME");
     }
-    if (!req.Session) {
+    // PASSWORD_VERIFIER carries its state in SECRET_BLOCK, SRP clients send no Session
+    if (!req.Session && req.ChallengeName !== "PASSWORD_VERIFIER") {
       throw new InvalidParameterError("Missing required parameter Session");
     }
 
@@ -184,14 +187,69 @@ export const RespondToAuthChallenge =
         UserStatus: "CONFIRMED",
       });
     } else if (req.ChallengeName === "PASSWORD_VERIFIER") {
-      // Simplified SRP: we don't verify the actual SRP proof.
-      // Instead, we just verify the password matches directly.
-      // The real SRP math is skipped in this emulator.
-      if (user.Password === undefined) {
+      const secretBlock = req.ChallengeResponses.PASSWORD_CLAIM_SECRET_BLOCK;
+      if (!secretBlock) {
+        throw new InvalidParameterError(
+          "Missing required parameter PASSWORD_CLAIM_SECRET_BLOCK",
+        );
+      }
+      if (!req.ChallengeResponses.TIMESTAMP) {
+        throw new InvalidParameterError("Missing required parameter TIMESTAMP");
+      }
+      if (!req.ChallengeResponses.PASSWORD_CLAIM_SIGNATURE) {
+        throw new InvalidParameterError(
+          "Missing required parameter PASSWORD_CLAIM_SIGNATURE",
+        );
+      }
+
+      // Recover the server SRP state stashed in SECRET_BLOCK during InitiateAuth,
+      // re-derive the shared secret, and verify the client's M1 proof — the
+      // signature is the only thing that depends on the entered password.
+      let serverState: srp.SrpServerState;
+      try {
+        serverState = srp.decodeSecretBlock(secretBlock);
+      } catch {
+        throw new NotAuthorizedError();
+      }
+      if (
+        serverState.username !== user.Username ||
+        user.Password === undefined
+      ) {
         throw new NotAuthorizedError("Incorrect username or password.");
       }
-      // In a real SRP flow, PASSWORD_CLAIM_SIGNATURE would be verified
-      // against the SRP shared secret. For the emulator, we trust the client.
+
+      const poolName = srp.poolNameFromId(userPool.options.Id);
+      const A = BigInt(`0x${serverState.aHex}`);
+      const b = BigInt(`0x${serverState.bHex}`);
+      const verifier = srp.deriveVerifier(
+        poolName,
+        user.Username,
+        user.Password,
+        serverState.saltHex,
+      );
+      const B = srp.computeB(b, verifier);
+      const u = srp.computeU(A, B);
+      const S = srp.computeServerS(A, verifier, u, b);
+      const key = srp.deriveKey(S, u);
+      const expectedSignature = srp.computeM1(
+        key,
+        poolName,
+        user.Username,
+        secretBlock,
+        req.ChallengeResponses.TIMESTAMP,
+      );
+
+      const provided = Buffer.from(
+        req.ChallengeResponses.PASSWORD_CLAIM_SIGNATURE,
+        "base64",
+      );
+      const expected = Buffer.from(expectedSignature, "base64");
+      if (
+        provided.length !== expected.length ||
+        !timingSafeEqual(provided, expected)
+      ) {
+        throw new NotAuthorizedError("Incorrect username or password.");
+      }
 
       // Check if MFA is required
       if (

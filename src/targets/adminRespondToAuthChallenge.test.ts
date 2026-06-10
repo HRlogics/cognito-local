@@ -112,6 +112,7 @@ describe("AdminRespondToAuthChallenge target", () => {
         AccessToken: "access",
         IdToken: "id",
         RefreshToken: "refresh",
+        ExpiresIn: 3600,
       });
       mockUserPoolService.listUserGroupMembership.mockResolvedValue([]);
 
@@ -162,6 +163,7 @@ describe("AdminRespondToAuthChallenge target", () => {
         AccessToken: "access",
         IdToken: "id",
         RefreshToken: "refresh",
+        ExpiresIn: 3600,
       });
       mockUserPoolService.listUserGroupMembership.mockResolvedValue([]);
 
@@ -229,6 +231,7 @@ describe("AdminRespondToAuthChallenge target", () => {
         AccessToken: "access",
         IdToken: "id",
         RefreshToken: "refresh",
+        ExpiresIn: 3600,
       });
       mockUserPoolService.listUserGroupMembership.mockResolvedValue([]);
 

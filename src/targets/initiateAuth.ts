@@ -16,6 +16,7 @@ import {
 import type { Services, UserPoolService } from "../services";
 import type { AppClient } from "../services/appClient";
 import type { Context } from "../services/context";
+import * as srp from "../services/srp";
 import {
   attributesToRecord,
   attributeValue,
@@ -340,7 +341,7 @@ const refreshTokenAuthFlow = async (
       IdToken: tokens.IdToken,
       NewDeviceMetadata: undefined,
       TokenType: undefined,
-      ExpiresIn: undefined,
+      ExpiresIn: tokens.ExpiresIn,
     },
   };
 };
@@ -382,19 +383,34 @@ const userSrpAuthFlow = async (
     throw new UserNotConfirmedException();
   }
 
-  // Simplified SRP: return fake SRP_B, SALT, SECRET_BLOCK
-  // The emulator doesn't perform real SRP math — PASSWORD_VERIFIER
-  // response handler will verify the password directly.
-  const salt = crypto.randomBytes(16).toString("hex");
-  const srpB = crypto.randomBytes(128).toString("hex");
-  const secretBlock = crypto.randomBytes(64).toString("base64");
+  const A = BigInt(`0x${req.AuthParameters.SRP_A}`);
+  if (A % srp.N === BigInt(0)) {
+    throw new NotAuthorizedError();
+  }
+
+  const poolName = srp.poolNameFromId(userPool.options.Id);
+  const saltHex = crypto.randomBytes(16).toString("hex");
+  const verifier = srp.deriveVerifier(
+    poolName,
+    user.Username,
+    user.Password,
+    saltHex,
+  );
+  const { b, B } = srp.generateServerEphemeral(verifier);
+
+  const secretBlock = srp.encodeSecretBlock({
+    username: user.Username,
+    saltHex,
+    bHex: b.toString(16),
+    aHex: A.toString(16),
+  });
 
   return {
     ChallengeName: "PASSWORD_VERIFIER",
     ChallengeParameters: {
-      SALT: salt,
-      SRP_B: srpB,
+      SALT: saltHex,
       SECRET_BLOCK: secretBlock,
+      SRP_B: B.toString(16),
       USER_ID_FOR_SRP: user.Username,
       USERNAME: user.Username,
     },

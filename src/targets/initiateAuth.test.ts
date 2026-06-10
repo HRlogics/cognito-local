@@ -136,6 +136,7 @@ describe("InitiateAuth target", () => {
             AccessToken: "access",
             IdToken: "id",
             RefreshToken: "refresh",
+            ExpiresIn: 3600,
           });
 
           const user = TDB.user();
@@ -420,6 +421,7 @@ describe("InitiateAuth target", () => {
               AccessToken: "access",
               IdToken: "id",
               RefreshToken: "refresh",
+              ExpiresIn: 3600,
             });
             mockUserPoolService.listUserGroupMembership.mockResolvedValue([]);
 
@@ -577,6 +579,7 @@ describe("InitiateAuth target", () => {
             AccessToken: "access",
             IdToken: "id",
             RefreshToken: "refresh",
+            ExpiresIn: 3600,
           });
           mockUserPoolService.listUserGroupMembership.mockResolvedValue([]);
 
@@ -614,6 +617,7 @@ describe("InitiateAuth target", () => {
               AccessToken: "access",
               IdToken: "id",
               RefreshToken: "refresh",
+              ExpiresIn: 3600,
             });
 
             mockTriggers.enabled.mockImplementation(
@@ -719,6 +723,7 @@ describe("InitiateAuth target", () => {
         AccessToken: "access",
         IdToken: "id",
         RefreshToken: "refresh",
+        ExpiresIn: 3600,
       });
 
       const existingUser = TDB.user({

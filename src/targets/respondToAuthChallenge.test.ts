@@ -155,6 +155,7 @@ describe("RespondToAuthChallenge target", () => {
           AccessToken: "access",
           IdToken: "id",
           RefreshToken: "refresh",
+          ExpiresIn: 3600,
         });
         mockUserPoolService.listUserGroupMembership.mockResolvedValue([]);
 
@@ -292,6 +293,7 @@ describe("RespondToAuthChallenge target", () => {
         AccessToken: "access",
         IdToken: "id",
         RefreshToken: "refresh",
+        ExpiresIn: 3600,
       });
       mockUserPoolService.listUserGroupMembership.mockResolvedValue([]);
 
@@ -368,6 +370,7 @@ describe("RespondToAuthChallenge target", () => {
         AccessToken: "a",
         IdToken: "i",
         RefreshToken: "r",
+        ExpiresIn: 3600,
       });
       const result = await respondToAuthChallenge(TestContext, {
         ClientId: userPoolClient.ClientId,

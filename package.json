@@ -31,6 +31,8 @@
     "@types/node": "^24.19.0",
     "@types/nodemailer": "^8.0.2",
     "@types/supertest": "^7.2.1",
+    "amazon-cognito-identity-js": "^6.3.20",
+    "cognito-srp-helper": "^2.3.5",
     "doctoc": "^2.5.0",
     "esbuild": "^0.28.2",
     "husky": "^9.1.7",

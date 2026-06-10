@@ -42,6 +42,7 @@ describe("AdminInitiateAuth target", () => {
       AccessToken: "access",
       IdToken: "id",
       RefreshToken: "refresh",
+      ExpiresIn: 3600,
     });
 
     const existingUser = TDB.user();
@@ -177,6 +178,7 @@ describe("AdminInitiateAuth target", () => {
         AccessToken: "access",
         IdToken: "id",
         RefreshToken: "refresh",
+        ExpiresIn: 3600,
       });
       const existingUser = TDB.user();
       mockUserPoolService.getUserByUsername.mockResolvedValue(existingUser);
@@ -253,6 +255,7 @@ describe("AdminInitiateAuth target", () => {
       AccessToken: "access",
       IdToken: "id",
       RefreshToken: "refresh",
+      ExpiresIn: 3600,
     });
 
     const existingUser = TDB.user({

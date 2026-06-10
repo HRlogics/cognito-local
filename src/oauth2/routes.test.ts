@@ -72,6 +72,7 @@ describe("OAuth2 routes", () => {
       AccessToken: "access-token",
       IdToken: "id-token",
       RefreshToken: "refresh-token",
+      ExpiresIn: 3600,
     });
   });
 
