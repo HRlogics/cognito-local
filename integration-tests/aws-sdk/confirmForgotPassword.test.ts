@@ -109,7 +109,7 @@ describe(
         AccessToken: expect.any(String),
         IdToken: expect.any(String),
         RefreshToken: expect.any(String),
-        ExpiresIn: 3600,
+        ExpiresIn: 86400,
       });
     });
   }),

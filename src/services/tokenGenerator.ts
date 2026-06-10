@@ -244,7 +244,9 @@ export class JwtTokenGenerator implements TokenGenerator {
       ExpiresIn: expiresInSeconds(
         userPoolClient.AccessTokenValidity,
         userPoolClient.TokenValidityUnits?.AccessToken ?? "hours",
-        3600,
+        // Match the access-token JWT's "24h" default below so the advertised
+        // TTL equals the token's real exp.
+        24 * 60 * 60,
       ),
       AccessToken: jwt.sign(accessToken, PrivateKey.pem, {
         algorithm: "RS256",

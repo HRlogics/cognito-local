@@ -16,7 +16,7 @@ import { newMockTriggers } from "../__tests__/mockTriggers";
 import { newMockUserPoolService } from "../__tests__/mockUserPoolService";
 import { TestContext } from "../__tests__/testContext";
 import * as TDB from "../__tests__/testDataBuilder";
-import { NotAuthorizedError } from "../errors";
+import { InvalidParameterError, NotAuthorizedError } from "../errors";
 import type { UserPoolService } from "../services";
 import type { TokenGenerator } from "../services/tokenGenerator";
 import type { User } from "../services/userPoolService";
@@ -156,6 +156,7 @@ describe("USER_SRP_AUTH end-to-end", () => {
         ),
       ).rejects.toBeInstanceOf(NotAuthorizedError);
     });
+
     it("rejects a SECRET_BLOCK issued for another user", async () => {
       const session = createSrpSession(user.Username, PASSWORD, POOL_ID, false);
       const initResp = await initiateAuth(
@@ -181,6 +182,18 @@ describe("USER_SRP_AUTH end-to-end", () => {
           }),
         ),
       ).rejects.toBeInstanceOf(NotAuthorizedError);
+    });
+  });
+
+  describe("input validation", () => {
+    it("throws InvalidParameterError for malformed SRP_A hex", async () => {
+      await expect(
+        initiateAuth(TestContext, {
+          ClientId: userPoolClient.ClientId,
+          AuthFlow: "USER_SRP_AUTH",
+          AuthParameters: { USERNAME: user.Username, SRP_A: "not-hex" },
+        }),
+      ).rejects.toBeInstanceOf(InvalidParameterError);
     });
   });
 

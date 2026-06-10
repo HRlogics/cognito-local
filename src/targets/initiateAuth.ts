@@ -383,7 +383,12 @@ const userSrpAuthFlow = async (
     throw new UserNotConfirmedException();
   }
 
-  const A = BigInt(`0x${req.AuthParameters.SRP_A}`);
+  let A: bigint;
+  try {
+    A = BigInt(`0x${req.AuthParameters.SRP_A}`);
+  } catch {
+    throw new InvalidParameterError("Invalid SRP_A");
+  }
   if (A % srp.N === BigInt(0)) {
     throw new NotAuthorizedError();
   }

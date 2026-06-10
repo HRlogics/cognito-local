@@ -286,7 +286,7 @@ export function attachOAuth2Routes(
         id_token: tokens.IdToken,
         refresh_token: tokens.RefreshToken,
         token_type: "Bearer",
-        expires_in: 3600,
+        expires_in: tokens.ExpiresIn,
       });
     }
 
@@ -330,7 +330,7 @@ export function attachOAuth2Routes(
         access_token: tokens.AccessToken,
         id_token: tokens.IdToken,
         token_type: "Bearer",
-        expires_in: 3600,
+        expires_in: tokens.ExpiresIn,
       });
     }
 
