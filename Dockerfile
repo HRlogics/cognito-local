@@ -1,4 +1,4 @@
-ARG NODE_VERSION=24.21.0
+ARG NODE_VERSION=24.21
 # The bundle is plain JS, so build on the runner's native platform, no emulation
 FROM --platform=$BUILDPLATFORM node:${NODE_VERSION}-alpine AS builder
 WORKDIR /app
