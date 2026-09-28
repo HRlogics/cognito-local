@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   newMockDataStore,
   newMockDataStoreFactory,
@@ -100,5 +100,18 @@ describe("loadConfig", () => {
         UsernameAttributes: [],
       },
     });
+  });
+
+  it("takes the issuer domain from ISSUER_DOMAIN", async () => {
+    vi.stubEnv("ISSUER_DOMAIN", "http://cognito.test:9229");
+    vi.resetModules();
+    try {
+      const { DefaultConfig: config } = await import("./config");
+      expect(config.TokenConfig.IssuerDomain).toEqual(
+        "http://cognito.test:9229",
+      );
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 });

@@ -13,6 +13,7 @@ import { AuthorizationCodeStore } from "../oauth2/authorizationCodeStore";
 import { attachOAuth2Routes } from "../oauth2/routes";
 import type { Services } from "../services";
 import type { Router } from "./Router";
+import { attachTestRoutes } from "./testRoutes";
 
 export type ServerOptions = {
   port?: number;
@@ -100,6 +101,8 @@ export const createServer = (
     const codeStore = new AuthorizationCodeStore();
     attachOAuth2Routes(app, services, codeStore);
   }
+
+  attachTestRoutes(app, router);
 
   app.post("/", (req, res) => {
     const xAmzTarget = req.headers["x-amz-target"];

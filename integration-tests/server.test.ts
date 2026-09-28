@@ -152,4 +152,101 @@ describe("HTTP server", () => {
       });
     });
   });
+
+  describe("/_/users", () => {
+    const seedRouter = (existing: { Username: string }[] = []) => {
+      const routes = {
+        ListUsers: vi.fn().mockResolvedValue({ Users: existing }),
+        AdminCreateUser: vi
+          .fn()
+          .mockResolvedValue({ User: { Username: "new-uuid" } }),
+        AdminSetUserPassword: vi.fn().mockResolvedValue({}),
+      };
+      const router = (target: string) =>
+        routes[target as keyof typeof routes] ?? (() => Promise.reject());
+      return { router, routes };
+    };
+    const seed = {
+      UserPoolId: "pool",
+      Users: [{ Email: "a@example.com", Password: "pw" }],
+    };
+
+    it("creates each user with a verified email and a permanent password", async () => {
+      const { router, routes } = seedRouter();
+      const server = createServer(router, MockLogger as any, {});
+
+      const response = await supertest(server.application)
+        .post("/_/users")
+        .send(seed);
+
+      expect(response.status).toEqual(200);
+      expect(response.body).toEqual({
+        Users: [{ Email: "a@example.com", Username: "new-uuid" }],
+      });
+      expect(routes.AdminCreateUser).toHaveBeenCalledWith(expect.anything(), {
+        UserPoolId: "pool",
+        Username: "a@example.com",
+        MessageAction: "SUPPRESS",
+        UserAttributes: [
+          { Name: "email", Value: "a@example.com" },
+          { Name: "email_verified", Value: "true" },
+        ],
+      });
+      expect(routes.AdminSetUserPassword).toHaveBeenCalledWith(
+        expect.anything(),
+        {
+          UserPoolId: "pool",
+          Username: "new-uuid",
+          Password: "pw",
+          Permanent: true,
+        },
+      );
+    });
+
+    it("keeps an existing user and only sets the password", async () => {
+      const { router, routes } = seedRouter([{ Username: "old-uuid" }]);
+      const server = createServer(router, MockLogger as any, {});
+
+      const response = await supertest(server.application)
+        .post("/_/users")
+        .send(seed);
+
+      expect(response.status).toEqual(200);
+      expect(response.body).toEqual({
+        Users: [{ Email: "a@example.com", Username: "old-uuid" }],
+      });
+      expect(routes.AdminCreateUser).not.toHaveBeenCalled();
+      expect(routes.AdminSetUserPassword).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ Username: "old-uuid", Permanent: true }),
+      );
+    });
+
+    it("rejects a malformed body", async () => {
+      const { router } = seedRouter();
+      const server = createServer(router, MockLogger as any, {});
+
+      const response = await supertest(server.application)
+        .post("/_/users")
+        .send({ UserPoolId: "pool", Users: [{ Email: "a@example.com" }] });
+
+      expect(response.status).toEqual(400);
+    });
+
+    it("reports a Cognito error the way the API does", async () => {
+      const { router, routes } = seedRouter();
+      routes.AdminSetUserPassword.mockRejectedValue(new InvalidPasswordError());
+      const server = createServer(router, MockLogger as any, {});
+
+      const response = await supertest(server.application)
+        .post("/_/users")
+        .send(seed);
+
+      expect(response.status).toEqual(400);
+      expect(response.body).toEqual({
+        __type: "InvalidPasswordException",
+        message: "Invalid password",
+      });
+    });
+  });
 });
