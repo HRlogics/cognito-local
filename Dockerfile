@@ -1,8 +1,8 @@
 FROM node:24-alpine AS builder
 WORKDIR /app
 
-ADD package.json package-lock.json yarn.lock ./
-RUN npm install --ignore-scripts
+ADD package.json package-lock.json ./
+RUN npm ci --ignore-scripts
 
 ADD src src
 ADD tsconfig.json tsconfig.build.json ./

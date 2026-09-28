@@ -70,7 +70,7 @@
       "src"
     ],
     "ext": "ts",
-    "exec": "yarn start"
+    "exec": "npm start"
   },
   "lint-staged": {
     "*.ts": [
