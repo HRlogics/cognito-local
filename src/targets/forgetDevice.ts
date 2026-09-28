@@ -1,11 +1,18 @@
 import type { ForgetDeviceRequest } from "aws-sdk/clients/cognitoidentityserviceprovider";
 import jwt from "jsonwebtoken";
-import { InvalidParameterError, ResourceNotFoundError, UserNotFoundError } from "../errors";
+import {
+  InvalidParameterError,
+  ResourceNotFoundError,
+  UserNotFoundError,
+} from "../errors";
 import type { Services } from "../services";
 import type { Token } from "../services/tokenGenerator";
 import type { Target } from "./Target";
 
-export type ForgetDeviceTarget = Target<ForgetDeviceRequest, {}>;
+export type ForgetDeviceTarget = Target<
+  ForgetDeviceRequest,
+  Record<string, never>
+>;
 
 type ForgetDeviceServices = Pick<Services, "cognito" | "clock">;
 

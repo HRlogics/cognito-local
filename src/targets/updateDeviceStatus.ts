@@ -3,7 +3,11 @@ import type {
   UpdateDeviceStatusResponse,
 } from "aws-sdk/clients/cognitoidentityserviceprovider";
 import jwt from "jsonwebtoken";
-import { InvalidParameterError, ResourceNotFoundError, UserNotFoundError } from "../errors";
+import {
+  InvalidParameterError,
+  ResourceNotFoundError,
+  UserNotFoundError,
+} from "../errors";
 import type { Services } from "../services";
 import type { Token } from "../services/tokenGenerator";
 import type { Target } from "./Target";
@@ -42,7 +46,7 @@ export const UpdateDeviceStatus =
     if (req.DeviceRememberedStatus) {
       device.DeviceAttributes = device.DeviceAttributes ?? [];
       const existing = device.DeviceAttributes.find(
-        (a: any) => a.Name === "device_status",
+        (a) => a.Name === "device_status",
       );
       if (existing) {
         existing.Value = req.DeviceRememberedStatus;

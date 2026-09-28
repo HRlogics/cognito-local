@@ -9,62 +9,55 @@
     "lib"
   ],
   "scripts": {
-    "build": "rm -rf lib && tsc --emitDeclarationOnly --project tsconfig.build.json && esbuild $(find src -name '*.ts' ! -name '*.test.ts' ! -path '*/__tests__/*') --outdir=lib --platform=node --target=node22 --format=cjs && cp -r src/keys lib/keys",
+    "build": "rm -rf lib && tsc --emitDeclarationOnly --project tsconfig.build.json && esbuild $(find src -name '*.ts' ! -name '*.test.ts' ! -path '*/__tests__/*') --outdir=lib --platform=node --target=node24.21 --format=cjs && cp -r src/keys lib/keys",
     "lint": "biome check --write",
     "start": "COGNITO_LOCAL_DEVMODE=1 tsx src/bin/start.ts",
     "start:debug": "COGNITO_LOCAL_DEVMODE=1 DEBUG=1 tsx --inspect-brk src/bin/start.ts",
     "start:watch": "nodemon",
     "test": "vitest",
-    "type-check": "tsc --target es2019 --esModuleInterop --resolveJsonModule --noEmit",
-    "semantic-release": "semantic-release",
-    "prepare": "husky install"
+    "type-check": "tsc --noEmit",
+    "prepare": "husky"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.1.3",
-    "@commitlint/cli": "^15.0.0",
-    "@commitlint/config-conventional": "^15.0.0",
-    "@semantic-release/changelog": "^6.0.1",
-    "@semantic-release/exec": "^6.0.3",
-    "@semantic-release/git": "^10.0.1",
-    "@semantic-release/npm": "^9.0.0",
-    "@types/aws-lambda": "^8.10.85",
+    "@biomejs/biome": "2.5.14",
+    "@commitlint/cli": "^21.2.3",
+    "@commitlint/config-conventional": "^21.2.3",
+    "@types/aws-lambda": "^8.10.163",
     "@types/body-parser": "^1.19.6",
     "@types/cors": "^2.8.19",
-    "@types/express": "^5.0.3",
+    "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/lodash.mergewith": "^4.6.9",
-    "@types/node": "^24.2.0",
-    "@types/nodemailer": "^8.0.0",
-    "@types/supertest": "^2.0.11",
-    "@types/uuid": "^8.3.3",
-    "esbuild": "^0.25.8",
-    "husky": "^7.0.4",
-    "lint-staged": "^10.1.3",
-    "markdown-toc": "^1.2.0",
-    "nodemon": "^2.0.3",
-    "semantic-release": "^19.0.3",
-    "supertest": "^6.1.6",
-    "tsx": "^4.20.3",
-    "typescript": "^5.9.2",
-    "vitest": "^3.2.4"
+    "@types/node": "^24.19.0",
+    "@types/nodemailer": "^8.0.2",
+    "@types/supertest": "^7.2.1",
+    "doctoc": "^2.5.0",
+    "esbuild": "^0.28.2",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.6.0",
+    "nodemon": "^3.1.14",
+    "supertest": "^7.3.0",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.2"
   },
   "dependencies": {
-    "@aws-crypto/client-node": "^3.1.1",
-    "aws-sdk": "^2.1145.0",
-    "body-parser": "^2.2.0",
-    "boxen": "^5.1.2",
-    "cors": "^2.8.5",
-    "express": "^5.1.0",
-    "jsonwebtoken": "^9.0.2",
+    "@aws-crypto/client-node": "^3.2.2",
+    "aws-sdk": "^2.1693.0",
+    "body-parser": "^2.3.0",
+    "boxen": "^9.0.0",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
     "lodash.mergewith": "^4.6.2",
-    "nodemailer": "^8.0.5",
-    "otplib": "^13.4.0",
-    "pino": "^7.11.0",
-    "pino-http": "^6.3.3",
-    "pino-pretty": "^7.6.1",
-    "short-uuid": "^4.2.0",
-    "stormdb": "^0.5.2",
-    "uuid": "^8.3.2"
+    "nodemailer": "^10.0.11",
+    "otplib": "^13.5.0",
+    "pino": "^10.3.1",
+    "pino-http": "^11.0.0",
+    "pino-pretty": "^13.1.3",
+    "short-uuid": "^6.0.3",
+    "stormdb": "^0.6.0",
+    "uuid": "^14.0.2"
   },
   "nodemonConfig": {
     "ignore": [
@@ -76,51 +69,13 @@
       "src"
     ],
     "ext": "ts",
-    "exec": "yarn start"
-  },
-  "lint-staged": {
-    "*.ts": [
-      "biome check --write",
-      "tsc --target es2019 --moduleResolution bundler --esModuleInterop --resolveJsonModule --noEmit ./setupTests.ts"
-    ],
-    "README.md": "markdown-toc -i --bullets=- --maxdepth=3"
+    "exec": "npm start"
   },
   "engines": {
-    "node": ">=12"
+    "node": ">=24.21"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/jagregory/cognito-local.git"
-  },
-  "release": {
-    "branches": [
-      "master"
-    ],
-    "plugins": [
-      "@semantic-release/commit-analyzer",
-      "@semantic-release/release-notes-generator",
-      "@semantic-release/changelog",
-      "@semantic-release/npm",
-      [
-        "@semantic-release/exec",
-        {
-          "publishCmd": "./scripts/dockerBuildPush.sh ${nextRelease.version}"
-        }
-      ],
-      [
-        "@semantic-release/github",
-        {
-          "addReleases": "top"
-        }
-      ],
-      [
-        "@semantic-release/git",
-        {
-          "assets": [
-            "CHANGELOG.md"
-          ]
-        }
-      ]
-    ]
+    "url": "https://github.com/HRlogics/cognito-local.git"
   }
 }

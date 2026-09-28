@@ -27,7 +27,7 @@ export const SetRiskConfiguration =
     await userPool.updateOptions(ctx, {
       ...userPool.options,
       _riskConfiguration: riskConfiguration,
-    } as any);
+    });
 
     return { RiskConfiguration: riskConfiguration };
   };

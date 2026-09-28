@@ -30,7 +30,7 @@ export const SetUICustomization =
     await userPool.updateOptions(ctx, {
       ...userPool.options,
       _uiCustomization: customization,
-    } as any);
+    });
 
     return { UICustomization: customization };
   };

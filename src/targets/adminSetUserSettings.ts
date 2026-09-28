@@ -37,7 +37,7 @@ export const AdminSetUserSettings =
 
     await userPool.saveUser(ctx, {
       ...user,
-      MFAOptions: req.MFAOptions as any,
+      MFAOptions: req.MFAOptions,
       UserMFASettingList: mfaSettingList,
       UserLastModifiedDate: clock.get(),
     });

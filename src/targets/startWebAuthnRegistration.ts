@@ -9,7 +9,7 @@ interface StartWebAuthnRegistrationRequest {
   AccessToken: string;
 }
 interface StartWebAuthnRegistrationResponse {
-  CredentialCreationOptions?: any;
+  CredentialCreationOptions?: unknown;
 }
 
 export type StartWebAuthnRegistrationTarget = Target<
@@ -18,9 +18,7 @@ export type StartWebAuthnRegistrationTarget = Target<
 >;
 
 export const StartWebAuthnRegistration =
-  ({
-    cognito,
-  }: Pick<Services, "cognito">): StartWebAuthnRegistrationTarget =>
+  ({ cognito }: Pick<Services, "cognito">): StartWebAuthnRegistrationTarget =>
   async (ctx, req) => {
     const decodedToken = jwt.decode(req.AccessToken) as Token | null;
     if (!decodedToken) {

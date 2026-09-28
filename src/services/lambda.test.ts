@@ -564,6 +564,7 @@ describe("Lambda function invoker", () => {
               userAttributes: {},
               usernameParameter: "{username}",
               codeParameter: "{####}",
+              linkParameter: "{##Click Here##}",
               clientMetadata: {
                 client: "metadata",
               },

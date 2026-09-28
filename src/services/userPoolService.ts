@@ -1,9 +1,16 @@
 import type {
   AttributeListType,
   AttributeType,
+  DeviceType,
+  IdentityProviderType,
+  LogDeliveryConfigurationType,
   MFAOptionListType,
+  ResourceServerType,
+  RiskConfigurationType,
   SchemaAttributesListType,
   StringType,
+  UICustomizationType,
+  UserImportJobType,
   UserMFASettingListType,
   UserPoolType,
   UserStatusType,
@@ -110,7 +117,8 @@ export interface User {
   ConfirmationCode?: string;
   MFACode?: string;
   RefreshTokens: string[];
-  Devices?: any[];
+  Devices?: DeviceType[];
+  _webauthnCredentials?: WebAuthnCredential[];
 
   /**
    * UnverifiedAttributeChanges is a list of attributes that have been requested to be changed
@@ -162,12 +170,52 @@ export interface Group {
   members?: readonly string[];
 }
 
+// Shapes for APIs that aws-sdk v2 has no types for
+export interface Terms {
+  TermsId: string;
+  UserPoolId: string;
+  TermsText?: string;
+  Version?: string;
+  CreationDate: Date;
+  LastModifiedDate: Date;
+}
+
+export interface ManagedLoginBranding {
+  ManagedLoginBrandingId: string;
+  UserPoolId: string;
+  ClientId?: string;
+  Settings?: unknown;
+  Assets?: unknown[];
+  CreationDate: Date;
+  LastModifiedDate: Date;
+}
+
+export interface WebAuthnCredential {
+  CredentialId: string;
+  FriendlyCredentialName?: string;
+  RelyingPartyId: string;
+  AuthenticatorAttachment: string;
+  AuthenticatorTransports: string[];
+  CreatedAt: Date;
+}
+
 // just use the types from the sdk, but make Id required
 export type UserPool = UserPoolType & {
   Id: string;
   SoftwareTokenMfaConfiguration?: {
     Enabled: boolean;
   };
+
+  // extra state for Cognito Local, stored alongside the pool
+  _identityProviders?: IdentityProviderType[];
+  _resourceServers?: ResourceServerType[];
+  _importJobs?: UserImportJobType[];
+  _terms?: Terms[];
+  _managedLoginBranding?: ManagedLoginBranding[];
+  _tags?: Record<string, string>;
+  _riskConfiguration?: RiskConfigurationType;
+  _uiCustomization?: UICustomizationType;
+  _logDeliveryConfiguration?: LogDeliveryConfigurationType;
 };
 
 export interface UserPoolService {

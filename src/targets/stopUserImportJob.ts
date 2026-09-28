@@ -18,9 +18,8 @@ export const StopUserImportJob =
   }: Pick<Services, "cognito" | "clock">): StopUserImportJobTarget =>
   async (ctx, req) => {
     const userPool = await cognito.getUserPool(ctx, req.UserPoolId);
-    const jobs =
-      ((userPool.options as any)._importJobs as any[]) ?? [];
-    const idx = jobs.findIndex((j: any) => j.JobId === req.JobId);
+    const jobs = userPool.options._importJobs ?? [];
+    const idx = jobs.findIndex((j) => j.JobId === req.JobId);
     if (idx < 0) {
       throw new ResourceNotFoundError("User import job not found");
     }
@@ -34,7 +33,7 @@ export const StopUserImportJob =
     await userPool.updateOptions(ctx, {
       ...userPool.options,
       _importJobs: jobs,
-    } as any);
+    });
 
     return { UserImportJob: jobs[idx] };
   };

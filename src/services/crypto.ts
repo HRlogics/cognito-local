@@ -26,7 +26,7 @@ export class CryptoService {
       return this._keyringNode;
     }
 
-    if (!this.config || !this.config.KMSKeyAlias || !this.config.KMSKeyId) {
+    if (!this.config?.KMSKeyAlias || !this.config.KMSKeyId) {
       throw new Error(
         "KMSConfig.KMSKeyAlias and KMSConfig.KMSKeyId is required when using a CustomEmailSender trigger.",
       );

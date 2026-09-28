@@ -2,13 +2,49 @@
 
 **122 SDK targets + 7 OAuth2/OIDC endpoints = 100% AWS Cognito User Pool API coverage**
 
-`Build: passing` | `Tests: 721 passing` | `License: MIT` | `Node >= 22`
+`Build: passing` | `Tests: 721 passing` | `License: MIT` | `Node >= 24.21`
 
 A local Amazon Cognito User Pool emulator for development and testing. Drop-in replacement for the real service -- point your SDK at `http://localhost:9229` and go.
 
 > Fork of [jagregory/cognito-local](https://github.com/jagregory/cognito-local), upgraded from partial coverage to full API parity.
 
 ---
+
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+- [Quick Start](#quick-start)
+  - [npm](#npm)
+  - [Docker](#docker)
+  - [Point your SDK at it](#point-your-sdk-at-it)
+  - [Create a User Pool](#create-a-user-pool)
+- [What's Supported](#whats-supported)
+  - [Authentication](#authentication)
+  - [MFA](#mfa)
+  - [User CRUD](#user-crud)
+  - [Groups](#groups)
+  - [User Pools & Clients](#user-pools--clients)
+  - [Identity Providers (Federation)](#identity-providers-federation)
+  - [Resource Servers](#resource-servers)
+  - [Devices](#devices)
+  - [Domains & Branding](#domains--branding)
+  - [WebAuthn (Passkeys)](#webauthn-passkeys)
+  - [Import Jobs](#import-jobs)
+  - [Tags, Terms, Risk, Logging](#tags-terms-risk-logging)
+  - [Other](#other)
+  - [Pagination](#pagination)
+- [OAuth2 / OIDC Endpoints](#oauth2--oidc-endpoints)
+- [Configuration](#configuration)
+  - [Lambda Triggers](#lambda-triggers)
+  - [Environment Variables](#environment-variables)
+  - [Data Storage](#data-storage)
+- [API Parity Summary](#api-parity-summary)
+- [Tech Stack](#tech-stack)
+- [Roadmap](#roadmap)
+- [Contributing](#contributing)
+- [License](#license)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 ## Quick Start
 
@@ -24,6 +60,12 @@ npm start
 ```bash
 docker compose up
 # Listening on http://localhost:9229
+```
+
+Prebuilt multi-arch image (amd64, arm64), published from `master`:
+
+```bash
+docker run --rm -p 9229:9229 -v cognito-data:/app/.cognito ghcr.io/hrlogics/cognito-local:latest
 ```
 
 ### Point your SDK at it
@@ -195,7 +237,7 @@ Supported triggers: PreSignUp, PostConfirmation, PostAuthentication, PreAuthenti
 
 ### Data Storage
 
-User Pools are stored as JSON files in `.cognito/db/`. Clients are stored in `.cognito/db/clients.json`. Mount this directory as a volume in Docker to persist data between runs.
+User Pools are stored as JSON files in `.cognito/db/`. Clients are stored in `.cognito/db/clients.json`. In Docker, mount a volume at `/app/.cognito` to persist data between runs. The container runs as the `node` user (uid 1000), so a host bind mount must be writable by uid 1000 (rootless podman: add `--userns=keep-id`).
 
 ---
 

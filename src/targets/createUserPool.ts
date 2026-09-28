@@ -3,7 +3,7 @@ import type {
   CreateUserPoolResponse,
   SchemaAttributesListType,
 } from "aws-sdk/clients/cognitoidentityserviceprovider";
-import shortUUID from "short-uuid";
+import { createTranslator } from "short-uuid";
 import type { Services } from "../services";
 import { USER_POOL_AWS_DEFAULTS } from "../services/cognitoService";
 import { userPoolToResponseObject } from "./responses";
@@ -12,7 +12,7 @@ import type { Target } from "./Target";
 const REGION = "local";
 const ACCOUNT_ID = "local";
 
-const generator = shortUUID(
+const generator = createTranslator(
   "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
 );
 
@@ -79,7 +79,7 @@ export const CreateUserPool =
   ({ cognito, clock }: CreateUserPoolServices): CreateUserPoolTarget =>
   async (ctx, req) => {
     const now = clock.get();
-    const userPoolId = `${REGION}_${generator.new().slice(0, 8)}`;
+    const userPoolId = `${REGION}_${generator.generate().slice(0, 8)}`;
     const userPool = await cognito.createUserPool(ctx, {
       AccountRecoverySetting: req.AccountRecoverySetting,
       AdminCreateUserConfig: req.AdminCreateUserConfig,

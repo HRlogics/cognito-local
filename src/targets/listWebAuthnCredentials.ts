@@ -3,6 +3,7 @@ import { InvalidParameterError, UserNotFoundError } from "../errors";
 import type { Services } from "../services";
 import { paginate } from "../services/pagination";
 import type { Token } from "../services/tokenGenerator";
+import type { WebAuthnCredential } from "../services/userPoolService";
 import type { Target } from "./Target";
 
 interface ListWebAuthnCredentialsRequest {
@@ -11,7 +12,7 @@ interface ListWebAuthnCredentialsRequest {
   MaxResults?: number;
 }
 interface ListWebAuthnCredentialsResponse {
-  Credentials?: any[];
+  Credentials?: WebAuthnCredential[];
   NextToken?: string;
 }
 
@@ -37,8 +38,7 @@ export const ListWebAuthnCredentials =
       throw new UserNotFoundError();
     }
 
-    const credentials =
-      ((user as any)._webauthnCredentials as any[]) ?? [];
+    const credentials = user._webauthnCredentials ?? [];
 
     const { items, nextToken } = paginate(
       credentials,

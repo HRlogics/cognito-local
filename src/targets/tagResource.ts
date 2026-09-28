@@ -16,8 +16,7 @@ export const TagResource =
     const poolId = req.ResourceArn.split("/").pop() ?? req.ResourceArn;
     const userPool = await cognito.getUserPool(ctx, poolId);
 
-    const tags: Record<string, string> =
-      (userPool.options as any)._tags ?? {};
+    const tags: Record<string, string> = userPool.options._tags ?? {};
 
     if (req.Tags) {
       for (const [key, value] of Object.entries(req.Tags)) {
@@ -28,7 +27,7 @@ export const TagResource =
     await userPool.updateOptions(ctx, {
       ...userPool.options,
       _tags: tags,
-    } as any);
+    });
 
     return {};
   };

@@ -5,7 +5,7 @@ import type { Target } from "./Target";
 
 export type DeleteIdentityProviderTarget = Target<
   DeleteIdentityProviderRequest,
-  {}
+  Record<string, never>
 >;
 
 type DeleteIdentityProviderServices = Pick<Services, "cognito">;
@@ -14,8 +14,7 @@ export const DeleteIdentityProvider =
   ({ cognito }: DeleteIdentityProviderServices): DeleteIdentityProviderTarget =>
   async (ctx, req) => {
     const userPool = await cognito.getUserPool(ctx, req.UserPoolId);
-    const providers: any[] =
-      (userPool.options as any)._identityProviders ?? [];
+    const providers = userPool.options._identityProviders ?? [];
 
     const index = providers.findIndex(
       (p) => p.ProviderName === req.ProviderName,
@@ -29,7 +28,7 @@ export const DeleteIdentityProvider =
     await userPool.updateOptions(ctx, {
       ...userPool.options,
       _identityProviders: providers,
-    } as any);
+    });
 
     return {};
   };

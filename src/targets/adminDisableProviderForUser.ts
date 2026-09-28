@@ -4,8 +4,14 @@ import type {
 } from "aws-sdk/clients/cognitoidentityserviceprovider";
 import { UserNotFoundError } from "../errors";
 import type { Services } from "../services";
-import { attributesAppend, attribute, attributeValue } from "../services/userPoolService";
+import {
+  attribute,
+  attributesAppend,
+  attributeValue,
+} from "../services/userPoolService";
 import type { Target } from "./Target";
+
+type Identity = { providerName?: string; userId?: string };
 
 export type AdminDisableProviderForUserTarget = Target<
   AdminDisableProviderForUserRequest,
@@ -33,9 +39,8 @@ export const AdminDisableProviderForUser =
       try {
         const identities = JSON.parse(identitiesStr);
         return identities.some(
-          (id: any) =>
-            id.providerName === providerName &&
-            id.userId === providerValue,
+          (id: Identity) =>
+            id.providerName === providerName && id.userId === providerValue,
         );
       } catch {
         return false;
@@ -49,13 +54,16 @@ export const AdminDisableProviderForUser =
     const identitiesStr = attributeValue("identities", user.Attributes) ?? "[]";
     const identities = JSON.parse(identitiesStr);
     const filtered = identities.filter(
-      (id: any) =>
+      (id: Identity) =>
         !(id.providerName === providerName && id.userId === providerValue),
     );
 
     const updatedAttributes = attributesAppend(
       user.Attributes,
-      attribute("identities", filtered.length > 0 ? JSON.stringify(filtered) : ""),
+      attribute(
+        "identities",
+        filtered.length > 0 ? JSON.stringify(filtered) : "",
+      ),
     );
 
     await userPool.saveUser(ctx, {

@@ -1,6 +1,7 @@
 import type {
   CreateIdentityProviderRequest,
   CreateIdentityProviderResponse,
+  IdentityProviderType,
 } from "aws-sdk/clients/cognitoidentityserviceprovider";
 import type { Services } from "../services";
 import type { Target } from "./Target";
@@ -9,17 +10,6 @@ export type CreateIdentityProviderTarget = Target<
   CreateIdentityProviderRequest,
   CreateIdentityProviderResponse
 >;
-
-interface IdentityProviderData {
-  UserPoolId: string;
-  ProviderName: string;
-  ProviderType: string;
-  ProviderDetails: Record<string, string>;
-  AttributeMapping?: Record<string, string>;
-  IdpIdentifiers?: string[];
-  CreationDate: Date;
-  LastModifiedDate: Date;
-}
 
 type CreateIdentityProviderServices = Pick<Services, "cognito" | "clock">;
 
@@ -32,7 +22,7 @@ export const CreateIdentityProvider =
     const userPool = await cognito.getUserPool(ctx, req.UserPoolId);
     const now = clock.get();
 
-    const provider: IdentityProviderData = {
+    const provider: IdentityProviderType = {
       UserPoolId: req.UserPoolId,
       ProviderName: req.ProviderName,
       ProviderType: req.ProviderType,
@@ -43,16 +33,16 @@ export const CreateIdentityProvider =
       LastModifiedDate: now,
     };
 
-    const providers: IdentityProviderData[] =
-      (userPool.options as any)._identityProviders ?? [];
+    const providers: IdentityProviderType[] =
+      userPool.options._identityProviders ?? [];
     providers.push(provider);
 
     await userPool.updateOptions(ctx, {
       ...userPool.options,
       _identityProviders: providers,
-    } as any);
+    });
 
     return {
-      IdentityProvider: provider as any,
+      IdentityProvider: provider,
     };
   };

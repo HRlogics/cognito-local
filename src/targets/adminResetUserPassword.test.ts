@@ -1,4 +1,12 @@
-import { beforeEach, describe, expect, it, vi, type MockedObject } from "vitest";
+import {
+  beforeEach,
+  describe,
+  expect,
+  it,
+  type Mock,
+  type MockedObject,
+  vi,
+} from "vitest";
 import { ClockFake } from "../__tests__/clockFake";
 import { newMockCognitoService } from "../__tests__/mockCognitoService";
 import { newMockMessages } from "../__tests__/mockMessages";
@@ -18,7 +26,7 @@ describe("AdminResetUserPassword target", () => {
   let adminResetUserPassword: AdminResetUserPasswordTarget;
   let mockUserPoolService: MockedObject<UserPoolService>;
   let mockMessages: MockedObject<Messages>;
-  let mockOtp: ReturnType<typeof vi.fn>;
+  let mockOtp: Mock<() => string>;
 
   beforeEach(() => {
     mockUserPoolService = newMockUserPoolService();

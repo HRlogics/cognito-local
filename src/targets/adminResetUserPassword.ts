@@ -2,7 +2,7 @@ import type {
   AdminResetUserPasswordRequest,
   AdminResetUserPasswordResponse,
 } from "aws-sdk/clients/cognitoidentityserviceprovider";
-import { InvalidParameterError, UserNotFoundError } from "../errors";
+import { UserNotFoundError } from "../errors";
 import type { Services } from "../services";
 import { attributeValue } from "../services/userPoolService";
 import type { Target } from "./Target";

@@ -3,13 +3,9 @@ import type {
   AdminCreateUserResponse,
   DeliveryMediumListType,
 } from "aws-sdk/clients/cognitoidentityserviceprovider";
-import shortUUID from "short-uuid";
+import { createTranslator } from "short-uuid";
 import * as uuid from "uuid";
-import {
-  InvalidParameterError,
-  UnsupportedError,
-  UsernameExistsError,
-} from "../errors";
+import { InvalidParameterError, UsernameExistsError } from "../errors";
 import type { Messages, Services, UserPoolService } from "../services";
 import type { Context } from "../services/context";
 import type { DeliveryDetails } from "../services/messageDelivery/messageDelivery";
@@ -21,7 +17,7 @@ import {
 import { userToResponseObject } from "./responses";
 import type { Target } from "./Target";
 
-const generator = shortUUID(
+const generator = createTranslator(
   "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!",
 );
 
@@ -110,7 +106,7 @@ export const AdminCreateUser =
       const temporaryPassword =
         req.TemporaryPassword ??
         process.env.CODE ??
-        generator.new().slice(0, 6);
+        generator.generate().slice(0, 6);
 
       const updatedUser = {
         ...existingUser,
@@ -143,7 +139,9 @@ export const AdminCreateUser =
     const now = clock.get();
 
     const temporaryPassword =
-      req.TemporaryPassword ?? process.env.CODE ?? generator.new().slice(0, 6);
+      req.TemporaryPassword ??
+      process.env.CODE ??
+      generator.generate().slice(0, 6);
 
     let username = req.Username;
     if (userPool.options.UsernameAttributes?.includes("email")) {

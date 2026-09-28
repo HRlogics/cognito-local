@@ -13,13 +13,13 @@ jobs:
     timeout-minutes: 5
 
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          node-version: 22.13.1
-          cache: yarn
-      - run: yarn install
-      - run: yarn lint
+          node-version-file: .tool-versions
+          cache: npm
+      - run: npm ci
+      - run: npx biome ci
 
   test:
     runs-on: ubuntu-latest
@@ -27,13 +27,13 @@ jobs:
     timeout-minutes: 5
 
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          node-version: 22.13.1
-          cache: yarn
-      - run: yarn install
-      - run: yarn test
+          node-version-file: .tool-versions
+          cache: npm
+      - run: npm ci
+      - run: npm test
 
   smoke_test:
     runs-on: ubuntu-latest
@@ -41,12 +41,12 @@ jobs:
     timeout-minutes: 5
 
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          node-version: 22.13.1
-          cache: yarn
-      - run: yarn install
+          node-version-file: .tool-versions
+          cache: npm
+      - run: npm ci
       - run: scripts/smoke-test
 
   build:
@@ -57,10 +57,10 @@ jobs:
       - test
 
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          node-version: 22.13.1
-          cache: yarn
-      - run: yarn install
-      - run: yarn build
+          node-version-file: .tool-versions
+          cache: npm
+      - run: npm ci
+      - run: npm run build

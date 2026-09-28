@@ -1,5 +1,6 @@
 import { ResourceNotFoundError } from "../errors";
 import type { Services } from "../services";
+import type { ManagedLoginBranding } from "../services/userPoolService";
 import type { Target } from "./Target";
 
 interface DescribeManagedLoginBrandingRequest {
@@ -7,7 +8,7 @@ interface DescribeManagedLoginBrandingRequest {
   ManagedLoginBrandingId: string;
 }
 interface DescribeManagedLoginBrandingResponse {
-  ManagedLoginBranding?: any;
+  ManagedLoginBranding?: ManagedLoginBranding;
 }
 
 export type DescribeManagedLoginBrandingTarget = Target<
@@ -21,11 +22,9 @@ export const DescribeManagedLoginBranding =
   }: Pick<Services, "cognito">): DescribeManagedLoginBrandingTarget =>
   async (ctx, req) => {
     const userPool = await cognito.getUserPool(ctx, req.UserPoolId);
-    const items =
-      ((userPool.options as any)._managedLoginBranding as any[]) ?? [];
+    const items = userPool.options._managedLoginBranding ?? [];
     const branding = items.find(
-      (b: any) =>
-        b.ManagedLoginBrandingId === req.ManagedLoginBrandingId,
+      (b) => b.ManagedLoginBrandingId === req.ManagedLoginBrandingId,
     );
     if (!branding) {
       throw new ResourceNotFoundError("Managed login branding not found");
