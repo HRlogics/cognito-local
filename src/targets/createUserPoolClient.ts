@@ -2,6 +2,7 @@ import type {
   CreateUserPoolClientRequest,
   CreateUserPoolClientResponse,
 } from "aws-sdk/clients/cognitoidentityserviceprovider";
+import { InvalidParameterError } from "../errors";
 import type { Services } from "../services";
 import { type AppClient, newId } from "../services/appClient";
 import { appClientToResponseObject } from "./responses";
@@ -22,6 +23,13 @@ export const CreateUserPoolClient =
   async (ctx, req) => {
     const userPool = await cognito.getUserPool(ctx, req.UserPoolId);
 
+    const pinned = userPool.options._pinnedClientId;
+    const clientId =
+      pinned === "use-name" ? req.ClientName : (pinned ?? newId());
+    if (pinned && (await cognito.getAppClient(ctx, clientId))) {
+      throw new InvalidParameterError(`App Client ${clientId} already exists`);
+    }
+
     const appClient: AppClient = {
       AccessTokenValidity: req.AccessTokenValidity,
       AllowedOAuthFlows: req.AllowedOAuthFlows,
@@ -29,7 +37,7 @@ export const CreateUserPoolClient =
       AllowedOAuthScopes: req.AllowedOAuthScopes,
       AnalyticsConfiguration: req.AnalyticsConfiguration,
       CallbackURLs: req.CallbackURLs,
-      ClientId: newId(),
+      ClientId: clientId,
       ClientName: req.ClientName,
       ClientSecret: req.GenerateSecret ? newId() : undefined,
       CreationDate: clock.get(),

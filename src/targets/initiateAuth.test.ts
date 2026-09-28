@@ -17,11 +17,16 @@ import { TestContext } from "../__tests__/testContext";
 import * as TDB from "../__tests__/testDataBuilder";
 import {
   InvalidParameterError,
-  InvalidPasswordError,
   NotAuthorizedError,
   PasswordResetRequiredError,
+  UserNotFoundError,
 } from "../errors";
-import type { Messages, Triggers, UserPoolService } from "../services";
+import type {
+  CognitoService,
+  Messages,
+  Triggers,
+  UserPoolService,
+} from "../services";
 import type { TokenGenerator } from "../services/tokenGenerator";
 import { attributesToRecord, type User } from "../services/userPoolService";
 import { InitiateAuth, type InitiateAuthTarget } from "./initiateAuth";
@@ -29,6 +34,7 @@ import { InitiateAuth, type InitiateAuthTarget } from "./initiateAuth";
 describe("InitiateAuth target", () => {
   let initiateAuth: InitiateAuthTarget;
   let mockUserPoolService: MockedObject<UserPoolService>;
+  let mockCognitoService: MockedObject<CognitoService>;
   let mockMessages: MockedObject<Messages>;
   let mockOtp: Mock<() => string>;
   let mockTriggers: MockedObject<Triggers>;
@@ -44,7 +50,7 @@ describe("InitiateAuth target", () => {
     mockTriggers = newMockTriggers();
     mockTokenGenerator = newMockTokenGenerator();
 
-    const mockCognitoService = newMockCognitoService(mockUserPoolService);
+    mockCognitoService = newMockCognitoService(mockUserPoolService);
     mockCognitoService.getAppClient.mockResolvedValue(userPoolClient);
 
     initiateAuth = InitiateAuth({
@@ -82,7 +88,26 @@ describe("InitiateAuth target", () => {
             PASSWORD: "bad-password",
           },
         }),
-      ).rejects.toBeInstanceOf(InvalidPasswordError);
+      ).rejects.toEqual(
+        new NotAuthorizedError("Incorrect username or password."),
+      );
+    });
+
+    it("throws if the user is disabled", async () => {
+      const user = TDB.user({ Enabled: false });
+
+      mockUserPoolService.getUserByUsername.mockResolvedValue(user);
+
+      await expect(
+        initiateAuth(TestContext, {
+          ClientId: userPoolClient.ClientId,
+          AuthFlow: "USER_PASSWORD_AUTH",
+          AuthParameters: {
+            USERNAME: user.Username,
+            PASSWORD: user.Password,
+          },
+        }),
+      ).rejects.toEqual(new NotAuthorizedError("User is disabled."));
     });
 
     it("throws when user requires reset", async () => {
@@ -147,7 +172,7 @@ describe("InitiateAuth target", () => {
       });
 
       describe("when User Migration trigger is disabled", () => {
-        it("throws", async () => {
+        it("throws UserNotFoundException", async () => {
           mockTriggers.enabled.mockReturnValue(false);
           mockUserPoolService.getUserByUsername.mockResolvedValue(null);
 
@@ -160,7 +185,29 @@ describe("InitiateAuth target", () => {
                 PASSWORD: "password",
               },
             }),
-          ).rejects.toBeInstanceOf(NotAuthorizedError);
+          ).rejects.toEqual(new UserNotFoundError("User does not exist."));
+        });
+
+        it("throws NotAuthorizedException when the client prevents user existence errors", async () => {
+          mockTriggers.enabled.mockReturnValue(false);
+          mockUserPoolService.getUserByUsername.mockResolvedValue(null);
+          mockCognitoService.getAppClient.mockResolvedValue({
+            ...userPoolClient,
+            PreventUserExistenceErrors: "ENABLED",
+          });
+
+          await expect(
+            initiateAuth(TestContext, {
+              ClientId: userPoolClient.ClientId,
+              AuthFlow: "USER_PASSWORD_AUTH",
+              AuthParameters: {
+                USERNAME: "username",
+                PASSWORD: "password",
+              },
+            }),
+          ).rejects.toEqual(
+            new NotAuthorizedError("Incorrect username or password."),
+          );
         });
       });
     });
@@ -653,6 +700,20 @@ describe("InitiateAuth target", () => {
   });
 
   describe("REFRESH_TOKEN_AUTH auth flow", () => {
+    it("throws if the user is disabled", async () => {
+      mockUserPoolService.getUserByRefreshToken.mockResolvedValue(
+        TDB.user({ Enabled: false }),
+      );
+
+      await expect(
+        initiateAuth(TestContext, {
+          ClientId: userPoolClient.ClientId,
+          AuthFlow: "REFRESH_TOKEN_AUTH",
+          AuthParameters: { REFRESH_TOKEN: "refresh token" },
+        }),
+      ).rejects.toEqual(new NotAuthorizedError("User is disabled."));
+    });
+
     it("returns new tokens", async () => {
       mockTokenGenerator.generate.mockResolvedValue({
         AccessToken: "access",

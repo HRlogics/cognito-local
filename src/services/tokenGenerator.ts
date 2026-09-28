@@ -29,6 +29,7 @@ export interface Token {
   event_id: string;
   scope: string;
   auth_time: Date;
+  iat: number;
   jti: string;
 }
 

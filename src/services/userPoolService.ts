@@ -117,6 +117,8 @@ export interface User {
   ConfirmationCode?: string;
   MFACode?: string;
   RefreshTokens: string[];
+  /** epoch seconds of the last global sign-out; access tokens issued at or before it are revoked */
+  AccessTokensRevokedAt?: number;
   Devices?: DeviceType[];
   _webauthnCredentials?: WebAuthnCredential[];
 
@@ -199,6 +201,11 @@ export interface WebAuthnCredential {
   CreatedAt: Date;
 }
 
+// Reserved UserPoolTags on CreateUserPool: fix the pool id, and the id of every app client
+// created in the pool afterwards ("use-name" reuses the ClientName). Not stored as tags.
+export const PINNED_POOL_ID_TAG = "cognito-local:pool-id";
+export const PINNED_CLIENT_ID_TAG = "cognito-local:client-id";
+
 // just use the types from the sdk, but make Id required
 export type UserPool = UserPoolType & {
   Id: string;
@@ -213,6 +220,7 @@ export type UserPool = UserPoolType & {
   _terms?: Terms[];
   _managedLoginBranding?: ManagedLoginBranding[];
   _tags?: Record<string, string>;
+  _pinnedClientId?: string;
   _riskConfiguration?: RiskConfigurationType;
   _uiCustomization?: UICustomizationType;
   _logDeliveryConfiguration?: LogDeliveryConfigurationType;

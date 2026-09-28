@@ -22,6 +22,21 @@ describe("FilterConfig", () => {
     );
   });
 
+  it.each([
+    'email="a@example.com"',
+    'email = "a@example.com"',
+    '"email" = "a@example.com"',
+    '"email"="a@example.com"',
+    'email^="a@"',
+  ])("parses the filter %s", (input) => {
+    const expr = new FilterConfig<{ Email: string }>({
+      email: FilterConfig.caseSensitive((x) => x.Email),
+    }).parse(input);
+
+    expect(expr({ Email: "a@example.com" })).toBe(true);
+    expect(expr({ Email: "b@example.com" })).toBe(false);
+  });
+
   it("returns an always-true expression if the filter is empty", () => {
     const expr = new FilterConfig({}).parse("");
 

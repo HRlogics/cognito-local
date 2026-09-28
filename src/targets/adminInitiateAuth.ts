@@ -5,10 +5,10 @@ import type {
 import { v4 } from "uuid";
 import {
   InvalidParameterError,
-  InvalidPasswordError,
   NotAuthorizedError,
   UnsupportedError,
   UserNotConfirmedException,
+  unknownUserError,
 } from "../errors";
 import type { Services } from "../services";
 import type { Context } from "../services/context";
@@ -65,12 +65,18 @@ const adminUserPasswordAuthFlow = async (
     });
   }
 
-  if (!user || !userPoolClient) {
+  if (!userPoolClient) {
     throw new NotAuthorizedError();
+  }
+  if (!user) {
+    throw unknownUserError(userPoolClient.PreventUserExistenceErrors);
+  }
+  if (!user.Enabled) {
+    throw new NotAuthorizedError("User is disabled.");
   }
 
   if (user.Password !== req.AuthParameters.PASSWORD) {
-    throw new InvalidPasswordError();
+    throw new NotAuthorizedError("Incorrect username or password.");
   }
 
   if (user.UserStatus === "UNCONFIRMED") {
@@ -154,6 +160,9 @@ const refreshTokenAuthFlow = async (
   if (!user || !userPoolClient) {
     throw new NotAuthorizedError();
   }
+  if (!user.Enabled) {
+    throw new NotAuthorizedError("User is disabled.");
+  }
 
   const userGroups = await userPool.listUserGroupMembership(ctx, user);
 
@@ -206,6 +215,9 @@ const customAuthFlow = async (
   );
   if (!user) {
     throw new NotAuthorizedError();
+  }
+  if (!user.Enabled) {
+    throw new NotAuthorizedError("User is disabled.");
   }
 
   const defineResult = await services.triggers.defineAuthChallenge(ctx, {

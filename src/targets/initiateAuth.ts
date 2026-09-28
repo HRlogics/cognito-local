@@ -7,11 +7,11 @@ import type {
 import { v4 } from "uuid";
 import {
   InvalidParameterError,
-  InvalidPasswordError,
   NotAuthorizedError,
   PasswordResetRequiredError,
   UnsupportedError,
   UserNotConfirmedException,
+  unknownUserError,
 } from "../errors";
 import type { Services, UserPoolService } from "../services";
 import type { AppClient } from "../services/appClient";
@@ -236,7 +236,10 @@ const userPasswordAuthFlow = async (
   }
 
   if (!user) {
-    throw new NotAuthorizedError();
+    throw unknownUserError(userPoolClient.PreventUserExistenceErrors);
+  }
+  if (!user.Enabled) {
+    throw new NotAuthorizedError("User is disabled.");
   }
   if (user.UserStatus === "RESET_REQUIRED") {
     throw new PasswordResetRequiredError();
@@ -245,7 +248,7 @@ const userPasswordAuthFlow = async (
     return newPasswordChallenge(user);
   }
   if (user.Password !== req.AuthParameters.PASSWORD) {
-    throw new InvalidPasswordError();
+    throw new NotAuthorizedError("Incorrect username or password.");
   }
   if (user.UserStatus === "UNCONFIRMED") {
     throw new UserNotConfirmedException();
@@ -308,6 +311,9 @@ const refreshTokenAuthFlow = async (
   if (!user) {
     throw new NotAuthorizedError();
   }
+  if (!user.Enabled) {
+    throw new NotAuthorizedError("User is disabled.");
+  }
 
   const userGroups = await userPool.listUserGroupMembership(ctx, user);
 
@@ -343,7 +349,7 @@ const userSrpAuthFlow = async (
   ctx: Context,
   req: InitiateAuthRequest,
   userPool: UserPoolService,
-  _userPoolClient: AppClient,
+  userPoolClient: AppClient,
   _services: InitiateAuthServices,
 ): Promise<InitiateAuthResponse> => {
   if (!req.AuthParameters) {
@@ -363,7 +369,10 @@ const userSrpAuthFlow = async (
     req.AuthParameters.USERNAME,
   );
   if (!user) {
-    throw new NotAuthorizedError();
+    throw unknownUserError(userPoolClient.PreventUserExistenceErrors);
+  }
+  if (!user.Enabled) {
+    throw new NotAuthorizedError("User is disabled.");
   }
 
   if (user.UserStatus === "RESET_REQUIRED") {
@@ -416,6 +425,9 @@ const customAuthFlow = async (
   );
   if (!user) {
     throw new NotAuthorizedError();
+  }
+  if (!user.Enabled) {
+    throw new NotAuthorizedError("User is disabled.");
   }
 
   const defineResult = await services.triggers.defineAuthChallenge(ctx, {

@@ -4,6 +4,7 @@ import { newMockCognitoService } from "../__tests__/mockCognitoService";
 import { newMockUserPoolService } from "../__tests__/mockUserPoolService";
 import { TestContext } from "../__tests__/testContext";
 import * as TDB from "../__tests__/testDataBuilder";
+import { InvalidParameterError } from "../errors";
 import type { CognitoService } from "../services";
 import { USER_POOL_AWS_DEFAULTS } from "../services/cognitoService";
 import { CreateUserPool, type CreateUserPoolTarget } from "./createUserPool";
@@ -47,6 +48,46 @@ describe("CreateUserPool target", () => {
     expect(result).toEqual({
       UserPool: createdUserPool,
     });
+  });
+
+  it("uses the pinned pool id and client id from reserved tags", async () => {
+    mockCognitoService.createUserPool.mockResolvedValue(TDB.userPool());
+    mockCognitoService.listUserPools.mockResolvedValue([]);
+
+    await createUserPool(TestContext, {
+      PoolName: "test-pool",
+      UserPoolTags: {
+        "cognito-local:pool-id": "us-east-1_pinned",
+        "cognito-local:client-id": "use-name",
+        team: "a",
+      },
+    });
+
+    expect(mockCognitoService.createUserPool).toHaveBeenCalledWith(
+      TestContext,
+      expect.objectContaining({
+        Arn: "arn:aws:cognito-idp:local:local:userpool/us-east-1_pinned",
+        Id: "us-east-1_pinned",
+        UserPoolTags: { team: "a" },
+        _pinnedClientId: "use-name",
+      }),
+    );
+  });
+
+  it("rejects a pinned pool id that is already in use", async () => {
+    mockCognitoService.listUserPools.mockResolvedValue([
+      TDB.userPool({ Id: "us-east-1_pinned" }),
+    ]);
+
+    await expect(
+      createUserPool(TestContext, {
+        PoolName: "test-pool",
+        UserPoolTags: { "cognito-local:pool-id": "us-east-1_pinned" },
+      }),
+    ).rejects.toEqual(
+      new InvalidParameterError("User Pool us-east-1_pinned already exists"),
+    );
+    expect(mockCognitoService.createUserPool).not.toHaveBeenCalled();
   });
 
   it("creates a new user pool with a custom attribute", async () => {

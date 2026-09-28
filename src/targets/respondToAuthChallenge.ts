@@ -7,7 +7,6 @@ import { v4 } from "uuid";
 import {
   CodeMismatchError,
   InvalidParameterError,
-  InvalidPasswordError,
   NotAuthorizedError,
   UnsupportedError,
 } from "../errors";
@@ -109,6 +108,9 @@ export const RespondToAuthChallenge =
     if (!user || !userPoolClient) {
       throw new NotAuthorizedError();
     }
+    if (!user.Enabled) {
+      throw new NotAuthorizedError("User is disabled.");
+    }
 
     if (req.ChallengeName === "SELECT_MFA_TYPE") {
       const answer = req.ChallengeResponses.ANSWER;
@@ -186,7 +188,7 @@ export const RespondToAuthChallenge =
       // Instead, we just verify the password matches directly.
       // The real SRP math is skipped in this emulator.
       if (user.Password === undefined) {
-        throw new InvalidPasswordError();
+        throw new NotAuthorizedError("Incorrect username or password.");
       }
       // In a real SRP flow, PASSWORD_CLAIM_SIGNATURE would be verified
       // against the SRP shared secret. For the emulator, we trust the client.

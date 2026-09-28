@@ -49,6 +49,7 @@ describe("GlobalSignOut target", () => {
     expect(mockUserPoolService.saveUser).toHaveBeenCalledWith(TestContext, {
       ...user,
       RefreshTokens: [],
+      AccessTokensRevokedAt: Math.floor(currentDate.getTime() / 1000),
       UserLastModifiedDate: currentDate,
     });
   });

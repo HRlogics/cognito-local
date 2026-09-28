@@ -2,7 +2,7 @@
 
 **122 SDK targets + 7 OAuth2/OIDC endpoints = 100% AWS Cognito User Pool API coverage**
 
-`Build: passing` | `Tests: 721 passing` | `License: MIT` | `Node >= 24.21`
+`Build: passing` | `Tests: 801 passing` | `License: MIT` | `Node >= 24.21`
 
 A local Amazon Cognito User Pool emulator for development and testing. Drop-in replacement for the real service -- point your SDK at `http://localhost:9229` and go.
 
@@ -105,6 +105,10 @@ aws --endpoint http://localhost:9229 cognito-idp create-user-pool --pool-name My
 
 **Challenge types:** SMS_MFA, SOFTWARE_TOKEN_MFA, NEW_PASSWORD_REQUIRED, PASSWORD_VERIFIER, MFA_SETUP, CUSTOM_CHALLENGE
 
+**Errors match AWS:** a wrong password is `NotAuthorizedException: Incorrect username or password.`, an unknown username is `UserNotFoundException` (or `NotAuthorizedException` when the client sets `PreventUserExistenceErrors: ENABLED`), and a user disabled with AdminDisableUser gets `NotAuthorizedException: User is disabled.` in every flow.
+
+**Sign-out revokes access tokens:** after GlobalSignOut or AdminUserGlobalSignOut, requests that carry an access token issued at or before the sign-out fail with `NotAuthorizedException: Access Token has been revoked`. Resolution is one second, and `/oauth2/userInfo` does not check revocation.
+
 ### MFA
 
 | Target | Description |
@@ -121,6 +125,8 @@ aws --endpoint http://localhost:9229 cognito-idp create-user-pool --pool-name My
 
 AdminCreateUser, AdminGetUser, AdminDeleteUser, AdminEnableUser, AdminDisableUser, AdminSetUserPassword, AdminUpdateUserAttributes, AdminDeleteUserAttributes, AdminConfirmSignUp, GetUser, DeleteUser, ChangePassword, UpdateUserAttributes, DeleteUserAttributes, GetUserAttributeVerificationCode, VerifyUserAttribute, AdminSetUserSettings, SetUserSettings
 
+ListUsers takes AWS filter syntax with `=` and `^=`, with or without spaces around the operator and with an optionally quoted attribute name (`email="a@example.com"`, `"email" ^= "a"`). AdminUpdateUserAttributes answers `AliasExistsException` when another user already holds the new email or phone number.
+
 ### Groups
 
 CreateGroup, GetGroup, UpdateGroup, DeleteGroup, ListGroups, AdminAddUserToGroup, AdminRemoveUserFromGroup, AdminListGroupsForUser, ListUsersInGroup
@@ -128,6 +134,15 @@ CreateGroup, GetGroup, UpdateGroup, DeleteGroup, ListGroups, AdminAddUserToGroup
 ### User Pools & Clients
 
 CreateUserPool, DescribeUserPool, UpdateUserPool, DeleteUserPool, ListUserPools, CreateUserPoolClient, DescribeUserPoolClient, UpdateUserPoolClient, DeleteUserPoolClient, ListUserPoolClients, AddCustomAttributes, AddUserPoolClientSecret, DeleteUserPoolClientSecret, ListUserPoolClientSecrets
+
+Pool and client ids are random unless pinned with reserved tags on `CreateUserPool`. `cognito-local:pool-id` sets the pool id as given; `cognito-local:client-id` sets the id of every client created in that pool later, and `use-name` makes it reuse the `ClientName`. Both tags are dropped from the stored pool. Pinning an id that is already in use fails with `InvalidParameterException`. DeleteUserPool deletes the pool's clients too, so a pinned pool can be deleted and created again with the same ids.
+
+```bash
+aws --endpoint http://localhost:9229 cognito-idp create-user-pool --pool-name MyPool \
+  --user-pool-tags cognito-local:pool-id=us-east-1_mypool,cognito-local:client-id=use-name
+aws --endpoint http://localhost:9229 cognito-idp create-user-pool-client \
+  --user-pool-id us-east-1_mypool --client-name my-app   # ClientId: my-app
+```
 
 ### Identity Providers (Federation)
 
@@ -267,11 +282,11 @@ User Pools are stored as JSON files in `.cognito/db/`. Clients are stored in `.c
 
 | Component | Version |
 |-----------|---------|
-| Node.js | 22+ |
-| TypeScript | 5.9 |
+| Node.js | 24.21+ |
+| TypeScript | 7 |
 | Express | 5 |
-| Test runner | Vitest |
-| Linter | Biome |
+| Test runner | Vitest 5 |
+| Linter | Biome 2 |
 | Build | esbuild |
 
 ---
@@ -286,7 +301,7 @@ This project will become `@nimbus/plugin-cognito` as part of the [Nimbus](https:
 
 1. Fork the repo and create a feature branch.
 2. Write tests for new targets (see existing `*.test.ts` files for patterns).
-3. Run `npm test` and ensure all 721+ tests pass.
+3. Run `npm test` and ensure all 801+ tests pass.
 4. Submit a pull request.
 
 ---

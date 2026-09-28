@@ -47,6 +47,7 @@ export const user = (partial?: Partial<User>): User => ({
     { Name: "email", Value: `${id("example")}@example.com` },
     { Name: "sub", Value: v4() },
   ],
+  AccessTokensRevokedAt: partial?.AccessTokensRevokedAt,
   AttributeVerificationCode: partial?.AttributeVerificationCode ?? undefined,
   ConfirmationCode: partial?.ConfirmationCode ?? undefined,
   Enabled: partial?.Enabled ?? true,
