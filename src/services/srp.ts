@@ -171,6 +171,9 @@ export interface SrpServerState {
   aHex: string;
 }
 
+/** Cognito lets a PASSWORD_VERIFIER challenge be answered for about 3 minutes */
+export const SECRET_BLOCK_TTL_MS = 3 * 60 * 1000;
+
 // Per-process key for the opaque SECRET_BLOCK that carries server SRP state across the
 // InitiateAuth -> RespondToAuthChallenge round-trip. The state includes the private ephemeral b,
 // from which a client could recover the verifier (v = (B - g^b) / k) and sign in without the
@@ -178,17 +181,31 @@ export interface SrpServerState {
 // SRP sessions then fail, like real expired Cognito sessions.
 const SERVER_BLOCK_KEY = crypto.randomBytes(32);
 
-export const encodeSecretBlock = (state: SrpServerState): string => {
+export const encodeSecretBlock = (
+  state: SrpServerState,
+  now = Date.now(),
+): string => {
   const iv = crypto.randomBytes(12);
   const cipher = crypto.createCipheriv("aes-256-gcm", SERVER_BLOCK_KEY, iv);
   const data = Buffer.concat([
-    cipher.update(JSON.stringify(state), "utf8"),
+    cipher.update(JSON.stringify({ ...state, issuedAt: now }), "utf8"),
     cipher.final(),
   ]);
   return Buffer.concat([iv, cipher.getAuthTag(), data]).toString("base64");
 };
 
-export const decodeSecretBlock = (secretBlockB64: string): SrpServerState => {
+// SECRET_BLOCKs already answered, so a captured PASSWORD_VERIFIER response can't be replayed.
+// Entries are dropped once they are past the TTL, when decodeSecretBlock would reject them anyway.
+const usedSecretBlocks = new Map<string, number>();
+
+/**
+ * Opens a SECRET_BLOCK issued by encodeSecretBlock. Throws when it was tampered with, issued by
+ * another process, older than SECRET_BLOCK_TTL_MS, or already used.
+ */
+export const decodeSecretBlock = (
+  secretBlockB64: string,
+  now = Date.now(),
+): SrpServerState => {
   const raw = Buffer.from(secretBlockB64, "base64");
   const decipher = crypto.createDecipheriv(
     "aes-256-gcm",
@@ -201,7 +218,64 @@ export const decodeSecretBlock = (secretBlockB64: string): SrpServerState => {
     decipher.update(raw.subarray(28)),
     decipher.final(),
   ]).toString("utf8");
-  return JSON.parse(json) as SrpServerState;
+  const { issuedAt, ...state } = JSON.parse(json) as SrpServerState & {
+    issuedAt: number;
+  };
+  if (now - issuedAt > SECRET_BLOCK_TTL_MS) {
+    throw new Error("SECRET_BLOCK expired");
+  }
+  for (const [block, expiresAt] of usedSecretBlocks) {
+    if (expiresAt < now) usedSecretBlocks.delete(block);
+  }
+  if (usedSecretBlocks.has(secretBlockB64)) {
+    throw new Error("SECRET_BLOCK already used");
+  }
+  usedSecretBlocks.set(secretBlockB64, issuedAt + SECRET_BLOCK_TTL_MS);
+  return state;
+};
+
+/**
+ * Verifies a PASSWORD_VERIFIER answer: recovers the server state from SECRET_BLOCK, re-derives the
+ * shared key from the stored password and checks the client's M1 proof. Returns false for a
+ * missing, expired, replayed or foreign block, or a wrong proof.
+ */
+export const verifyPasswordClaim = (
+  poolId: string,
+  user: { Username: string; Password?: string },
+  secretBlock: string,
+  timestamp: string,
+  signature: string,
+): boolean => {
+  let serverState: SrpServerState;
+  try {
+    serverState = decodeSecretBlock(secretBlock);
+  } catch {
+    return false;
+  }
+  if (serverState.username !== user.Username || user.Password === undefined) {
+    return false;
+  }
+
+  const poolName = poolNameFromId(poolId);
+  const A = BigInt(`0x${serverState.aHex}`);
+  const b = BigInt(`0x${serverState.bHex}`);
+  const verifier = deriveVerifier(
+    poolName,
+    user.Username,
+    user.Password,
+    serverState.saltHex,
+  );
+  const u = computeU(A, computeB(b, verifier));
+  const key = deriveKey(computeServerS(A, verifier, u, b), u);
+  const expected = Buffer.from(
+    computeM1(key, poolName, user.Username, secretBlock, timestamp),
+    "base64",
+  );
+  const provided = Buffer.from(signature, "base64");
+  return (
+    provided.length === expected.length &&
+    crypto.timingSafeEqual(provided, expected)
+  );
 };
 
 /** Random server ephemeral b in [1, N), and the matching B != 0 mod N. */

@@ -175,6 +175,24 @@ describe("srp", () => {
       expect(() => decodeSecretBlock(raw.toString("base64"))).toThrow();
     });
 
+    it("rejects an expired block and a second use", () => {
+      const state = {
+        username: "alice",
+        saltHex: "abcd",
+        bHex: "01ff",
+        aHex: "deadbeef",
+      };
+      const t0 = 1_000_000;
+      const stale = encodeSecretBlock(state, t0);
+      expect(() => decodeSecretBlock(stale, t0 + 3 * 60 * 1000 + 1)).toThrow(
+        "expired",
+      );
+
+      const fresh = encodeSecretBlock(state, t0);
+      expect(decodeSecretBlock(fresh, t0 + 1000)).toEqual(state);
+      expect(() => decodeSecretBlock(fresh, t0 + 2000)).toThrow("already used");
+    });
+
     it("does not reveal the private ephemeral b", () => {
       const bHex = "0123456789abcdef0123456789abcdef";
       const block = encodeSecretBlock({

@@ -16,7 +16,11 @@ import { newMockTriggers } from "../__tests__/mockTriggers";
 import { newMockUserPoolService } from "../__tests__/mockUserPoolService";
 import { TestContext } from "../__tests__/testContext";
 import * as TDB from "../__tests__/testDataBuilder";
-import { InvalidParameterError, NotAuthorizedError } from "../errors";
+import {
+  InvalidParameterError,
+  NotAuthorizedError,
+  PasswordResetRequiredError,
+} from "../errors";
 import type { UserPoolService } from "../services";
 import type { TokenGenerator } from "../services/tokenGenerator";
 import type { User } from "../services/userPoolService";
@@ -182,6 +186,46 @@ describe("USER_SRP_AUTH end-to-end", () => {
           }),
         ),
       ).rejects.toBeInstanceOf(NotAuthorizedError);
+    });
+  });
+
+  describe("replay and status changes", () => {
+    const signIn = async () => {
+      const session = createSrpSession(user.Username, PASSWORD, POOL_ID, false);
+      const initResp = await initiateAuth(
+        TestContext,
+        wrapInitiateAuth(session, {
+          ClientId: userPoolClient.ClientId,
+          AuthFlow: "USER_SRP_AUTH",
+          AuthParameters: { USERNAME: user.Username },
+        }),
+      );
+      return wrapAuthChallenge(signSrpSession(session, initResp), {
+        ClientId: userPoolClient.ClientId,
+        ChallengeName: "PASSWORD_VERIFIER",
+        ChallengeResponses: { USERNAME: user.Username },
+      });
+    };
+
+    it("rejects a replayed PASSWORD_VERIFIER answer", async () => {
+      const answer = await signIn();
+      await respondToAuthChallenge(TestContext, answer);
+
+      await expect(
+        respondToAuthChallenge(TestContext, answer),
+      ).rejects.toBeInstanceOf(NotAuthorizedError);
+    });
+
+    it("re-checks the user's status when the challenge is answered", async () => {
+      const answer = await signIn();
+      mockUserPoolService.getUserByUsername.mockResolvedValue({
+        ...user,
+        UserStatus: "RESET_REQUIRED",
+      });
+
+      await expect(
+        respondToAuthChallenge(TestContext, answer),
+      ).rejects.toBeInstanceOf(PasswordResetRequiredError);
     });
   });
 

@@ -1,4 +1,4 @@
-import { randomUUID, timingSafeEqual } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import type {
   DeliveryMediumType,
   RespondToAuthChallengeRequest,
@@ -19,6 +19,7 @@ import {
   type MFAOption,
   type User,
 } from "../services/userPoolService";
+import { assertCanSignIn } from "./challenges";
 import type { Target } from "./Target";
 
 export type RespondToAuthChallengeTarget = Target<
@@ -202,54 +203,19 @@ export const RespondToAuthChallenge =
         );
       }
 
-      // Recover the server SRP state stashed in SECRET_BLOCK during InitiateAuth,
-      // re-derive the shared secret, and verify the client's M1 proof — the
-      // signature is the only thing that depends on the entered password.
-      let serverState: srp.SrpServerState;
-      try {
-        serverState = srp.decodeSecretBlock(secretBlock);
-      } catch {
-        throw new NotAuthorizedError();
-      }
       if (
-        serverState.username !== user.Username ||
-        user.Password === undefined
+        !srp.verifyPasswordClaim(
+          userPool.options.Id,
+          user,
+          secretBlock,
+          req.ChallengeResponses.TIMESTAMP,
+          req.ChallengeResponses.PASSWORD_CLAIM_SIGNATURE,
+        )
       ) {
         throw new NotAuthorizedError("Incorrect username or password.");
       }
-
-      const poolName = srp.poolNameFromId(userPool.options.Id);
-      const A = BigInt(`0x${serverState.aHex}`);
-      const b = BigInt(`0x${serverState.bHex}`);
-      const verifier = srp.deriveVerifier(
-        poolName,
-        user.Username,
-        user.Password,
-        serverState.saltHex,
-      );
-      const B = srp.computeB(b, verifier);
-      const u = srp.computeU(A, B);
-      const S = srp.computeServerS(A, verifier, u, b);
-      const key = srp.deriveKey(S, u);
-      const expectedSignature = srp.computeM1(
-        key,
-        poolName,
-        user.Username,
-        secretBlock,
-        req.ChallengeResponses.TIMESTAMP,
-      );
-
-      const provided = Buffer.from(
-        req.ChallengeResponses.PASSWORD_CLAIM_SIGNATURE,
-        "base64",
-      );
-      const expected = Buffer.from(expectedSignature, "base64");
-      if (
-        provided.length !== expected.length ||
-        !timingSafeEqual(provided, expected)
-      ) {
-        throw new NotAuthorizedError("Incorrect username or password.");
-      }
+      // the block may predate a status change (e.g. AdminResetUserPassword)
+      assertCanSignIn(user);
 
       // Check if MFA is required
       if (

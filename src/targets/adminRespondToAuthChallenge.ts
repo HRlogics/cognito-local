@@ -10,7 +10,9 @@ import {
   UnsupportedError,
 } from "../errors";
 import type { Services } from "../services";
+import * as srp from "../services/srp";
 import { verify as verifyTotp } from "../services/totp";
+import { assertCanSignIn } from "./challenges";
 import type { Target } from "./Target";
 
 export type AdminRespondToAuthChallengeTarget = Target<
@@ -96,9 +98,26 @@ export const AdminRespondToAuthChallenge =
         UserStatus: "CONFIRMED",
       });
     } else if (req.ChallengeName === "PASSWORD_VERIFIER") {
-      if (user.Password === undefined) {
+      const secretBlock = req.ChallengeResponses.PASSWORD_CLAIM_SECRET_BLOCK;
+      const timestamp = req.ChallengeResponses.TIMESTAMP;
+      const signature = req.ChallengeResponses.PASSWORD_CLAIM_SIGNATURE;
+      if (!secretBlock || !timestamp || !signature) {
+        throw new InvalidParameterError(
+          "PASSWORD_VERIFIER requires PASSWORD_CLAIM_SECRET_BLOCK, TIMESTAMP and PASSWORD_CLAIM_SIGNATURE",
+        );
+      }
+      if (
+        !srp.verifyPasswordClaim(
+          userPool.options.Id,
+          user,
+          secretBlock,
+          timestamp,
+          signature,
+        )
+      ) {
         throw new NotAuthorizedError("Incorrect username or password.");
       }
+      assertCanSignIn(user);
       if (
         (userPool.options.MfaConfiguration === "OPTIONAL" &&
           ((user.MFAOptions ?? []).length > 0 ||
