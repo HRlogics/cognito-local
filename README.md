@@ -26,6 +26,12 @@ docker compose up
 # Listening on http://localhost:9229
 ```
 
+Prebuilt multi-arch image (amd64, arm64), published from `master`:
+
+```bash
+docker run --rm -p 9229:9229 -v "$PWD/.cognito:/app/.cognito" ghcr.io/hrlogics/cognito-local:latest
+```
+
 ### Point your SDK at it
 
 ```js
