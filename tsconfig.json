@@ -7,7 +7,9 @@
     "outDir": "./lib",
     "resolveJsonModule": true,
     "strict": true,
-    "target": "ES2019"
+    "target": "ES2019",
+    "lib": ["ES2023", "DOM"],
+    "skipLibCheck": true
   },
   "include": ["./setupTests.ts", "src/**/*.ts", "integration-tests/**/*.ts"],
   "exclude": ["lib"],

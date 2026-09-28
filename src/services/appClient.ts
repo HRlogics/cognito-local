@@ -5,7 +5,7 @@ import type {
   PreventUserExistenceErrorTypes,
   TokenValidityUnitsType,
 } from "aws-sdk/clients/cognitoidentityserviceprovider";
-import shortUUID from "short-uuid";
+import { createTranslator } from "short-uuid";
 
 export interface AppClient {
   UserPoolId: string;
@@ -94,6 +94,6 @@ export interface AppClient {
   EnableTokenRevocation?: boolean;
 }
 
-const generator = shortUUID("0123456789abcdefghijklmnopqrstuvwxyz");
+const generator = createTranslator("0123456789abcdefghijklmnopqrstuvwxyz");
 
-export const newId = generator.new;
+export const newId = generator.generate;
