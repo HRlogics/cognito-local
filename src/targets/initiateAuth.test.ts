@@ -19,8 +19,14 @@ import {
   InvalidParameterError,
   NotAuthorizedError,
   PasswordResetRequiredError,
+  UserNotFoundError,
 } from "../errors";
-import type { Messages, Triggers, UserPoolService } from "../services";
+import type {
+  CognitoService,
+  Messages,
+  Triggers,
+  UserPoolService,
+} from "../services";
 import type { TokenGenerator } from "../services/tokenGenerator";
 import { attributesToRecord, type User } from "../services/userPoolService";
 import { InitiateAuth, type InitiateAuthTarget } from "./initiateAuth";
@@ -28,6 +34,7 @@ import { InitiateAuth, type InitiateAuthTarget } from "./initiateAuth";
 describe("InitiateAuth target", () => {
   let initiateAuth: InitiateAuthTarget;
   let mockUserPoolService: MockedObject<UserPoolService>;
+  let mockCognitoService: MockedObject<CognitoService>;
   let mockMessages: MockedObject<Messages>;
   let mockOtp: Mock<() => string>;
   let mockTriggers: MockedObject<Triggers>;
@@ -43,7 +50,7 @@ describe("InitiateAuth target", () => {
     mockTriggers = newMockTriggers();
     mockTokenGenerator = newMockTokenGenerator();
 
-    const mockCognitoService = newMockCognitoService(mockUserPoolService);
+    mockCognitoService = newMockCognitoService(mockUserPoolService);
     mockCognitoService.getAppClient.mockResolvedValue(userPoolClient);
 
     initiateAuth = InitiateAuth({
@@ -165,7 +172,7 @@ describe("InitiateAuth target", () => {
       });
 
       describe("when User Migration trigger is disabled", () => {
-        it("throws", async () => {
+        it("throws UserNotFoundException", async () => {
           mockTriggers.enabled.mockReturnValue(false);
           mockUserPoolService.getUserByUsername.mockResolvedValue(null);
 
@@ -178,7 +185,29 @@ describe("InitiateAuth target", () => {
                 PASSWORD: "password",
               },
             }),
-          ).rejects.toBeInstanceOf(NotAuthorizedError);
+          ).rejects.toEqual(new UserNotFoundError("User does not exist."));
+        });
+
+        it("throws NotAuthorizedException when the client prevents user existence errors", async () => {
+          mockTriggers.enabled.mockReturnValue(false);
+          mockUserPoolService.getUserByUsername.mockResolvedValue(null);
+          mockCognitoService.getAppClient.mockResolvedValue({
+            ...userPoolClient,
+            PreventUserExistenceErrors: "ENABLED",
+          });
+
+          await expect(
+            initiateAuth(TestContext, {
+              ClientId: userPoolClient.ClientId,
+              AuthFlow: "USER_PASSWORD_AUTH",
+              AuthParameters: {
+                USERNAME: "username",
+                PASSWORD: "password",
+              },
+            }),
+          ).rejects.toEqual(
+            new NotAuthorizedError("Incorrect username or password."),
+          );
         });
       });
     });

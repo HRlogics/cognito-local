@@ -8,6 +8,7 @@ import {
   NotAuthorizedError,
   UnsupportedError,
   UserNotConfirmedException,
+  unknownUserError,
 } from "../errors";
 import type { Services } from "../services";
 import type { Context } from "../services/context";
@@ -64,8 +65,11 @@ const adminUserPasswordAuthFlow = async (
     });
   }
 
-  if (!user || !userPoolClient) {
+  if (!userPoolClient) {
     throw new NotAuthorizedError();
+  }
+  if (!user) {
+    throw unknownUserError(userPoolClient.PreventUserExistenceErrors);
   }
   if (!user.Enabled) {
     throw new NotAuthorizedError("User is disabled.");

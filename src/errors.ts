@@ -110,3 +110,14 @@ export class InvalidParameterError extends CognitoError {
     super("InvalidParameterException", message);
   }
 }
+
+/**
+ * The sign-in error for a username that matches no user: UserNotFoundException, unless the app
+ * client hides user existence, in which case it looks like a wrong password.
+ */
+export const unknownUserError = (
+  preventUserExistenceErrors: string | undefined,
+): CognitoError =>
+  preventUserExistenceErrors === "ENABLED"
+    ? new NotAuthorizedError("Incorrect username or password.")
+    : new UserNotFoundError("User does not exist.");

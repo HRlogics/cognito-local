@@ -11,6 +11,7 @@ import {
   PasswordResetRequiredError,
   UnsupportedError,
   UserNotConfirmedException,
+  unknownUserError,
 } from "../errors";
 import type { Services, UserPoolService } from "../services";
 import type { AppClient } from "../services/appClient";
@@ -235,7 +236,7 @@ const userPasswordAuthFlow = async (
   }
 
   if (!user) {
-    throw new NotAuthorizedError();
+    throw unknownUserError(userPoolClient.PreventUserExistenceErrors);
   }
   if (!user.Enabled) {
     throw new NotAuthorizedError("User is disabled.");
@@ -348,7 +349,7 @@ const userSrpAuthFlow = async (
   ctx: Context,
   req: InitiateAuthRequest,
   userPool: UserPoolService,
-  _userPoolClient: AppClient,
+  userPoolClient: AppClient,
   _services: InitiateAuthServices,
 ): Promise<InitiateAuthResponse> => {
   if (!req.AuthParameters) {
@@ -368,7 +369,7 @@ const userSrpAuthFlow = async (
     req.AuthParameters.USERNAME,
   );
   if (!user) {
-    throw new NotAuthorizedError();
+    throw unknownUserError(userPoolClient.PreventUserExistenceErrors);
   }
   if (!user.Enabled) {
     throw new NotAuthorizedError("User is disabled.");
