@@ -15,6 +15,7 @@ import type {
   UserPoolType,
   UserStatusType,
 } from "aws-sdk/clients/cognitoidentityserviceprovider";
+import jwt, { type JwtPayload } from "jsonwebtoken";
 import { InvalidParameterError } from "../errors";
 import type { AppClient } from "./appClient";
 import type { Clock } from "./clock";
@@ -395,6 +396,11 @@ export class UserPoolServiceImpl implements UserPoolService {
       { refreshToken },
       "UserPoolServiceImpl.getUserByRefreshToken",
     );
+    // our refresh tokens are JWTs carrying exp; an expired one no longer resolves to a user
+    const exp = (jwt.decode(refreshToken) as JwtPayload | null)?.exp;
+    if (exp !== undefined && exp * 1000 <= this.clock.get().getTime()) {
+      return null;
+    }
     const users = await this.listUsers(ctx);
     const user = users.find(
       (user) =>
