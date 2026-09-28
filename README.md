@@ -10,6 +10,42 @@ A local Amazon Cognito User Pool emulator for development and testing. Drop-in r
 
 ---
 
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+- [Quick Start](#quick-start)
+  - [npm](#npm)
+  - [Docker](#docker)
+  - [Point your SDK at it](#point-your-sdk-at-it)
+  - [Create a User Pool](#create-a-user-pool)
+- [What's Supported](#whats-supported)
+  - [Authentication](#authentication)
+  - [MFA](#mfa)
+  - [User CRUD](#user-crud)
+  - [Groups](#groups)
+  - [User Pools & Clients](#user-pools--clients)
+  - [Identity Providers (Federation)](#identity-providers-federation)
+  - [Resource Servers](#resource-servers)
+  - [Devices](#devices)
+  - [Domains & Branding](#domains--branding)
+  - [WebAuthn (Passkeys)](#webauthn-passkeys)
+  - [Import Jobs](#import-jobs)
+  - [Tags, Terms, Risk, Logging](#tags-terms-risk-logging)
+  - [Other](#other)
+  - [Pagination](#pagination)
+- [OAuth2 / OIDC Endpoints](#oauth2--oidc-endpoints)
+- [Configuration](#configuration)
+  - [Lambda Triggers](#lambda-triggers)
+  - [Environment Variables](#environment-variables)
+  - [Data Storage](#data-storage)
+- [API Parity Summary](#api-parity-summary)
+- [Tech Stack](#tech-stack)
+- [Roadmap](#roadmap)
+- [Contributing](#contributing)
+- [License](#license)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ## Quick Start
 
 ### npm
