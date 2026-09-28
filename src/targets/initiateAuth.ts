@@ -17,11 +17,11 @@ import type { AppClient } from "../services/appClient";
 import type { Context } from "../services/context";
 import * as srp from "../services/srp";
 import {
-  attributesToRecord,
   attributeValue,
   type MFAOption,
   type User,
 } from "../services/userPoolService";
+import { newPasswordChallenge } from "./challenges";
 import type { Target } from "./Target";
 
 export type InitiateAuthTarget = Target<
@@ -187,16 +187,6 @@ const verifyPasswordChallenge = async (
     AuthenticationResult: tokens,
   };
 };
-
-const newPasswordChallenge = (user: User): InitiateAuthResponse => ({
-  ChallengeName: "NEW_PASSWORD_REQUIRED",
-  ChallengeParameters: {
-    USER_ID_FOR_SRP: user.Username,
-    requiredAttributes: JSON.stringify([]),
-    userAttributes: JSON.stringify(attributesToRecord(user.Attributes)),
-  },
-  Session: crypto.randomUUID(),
-});
 
 const userPasswordAuthFlow = async (
   ctx: Context,

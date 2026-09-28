@@ -14,12 +14,11 @@ import type { Services } from "../services";
 import * as srp from "../services/srp";
 import { verify as verifyTotp } from "../services/totp";
 import {
-  attributesToRecord,
   attributeValue,
   type MFAOption,
   type User,
 } from "../services/userPoolService";
-import { assertCanSignIn } from "./challenges";
+import { assertCanSignIn, newPasswordChallenge } from "./challenges";
 import type { Target } from "./Target";
 
 export type RespondToAuthChallengeTarget = Target<
@@ -237,16 +236,7 @@ export const RespondToAuthChallenge =
       }
 
       if (user.UserStatus === "FORCE_CHANGE_PASSWORD") {
-        return {
-          ChallengeName: "NEW_PASSWORD_REQUIRED",
-          ChallengeParameters: {
-            USER_ID_FOR_SRP: user.Username,
-            requiredAttributes: JSON.stringify([]),
-            // amazon-cognito-identity-js JSON.parses userAttributes, so it must be present
-            userAttributes: JSON.stringify(attributesToRecord(user.Attributes)),
-          } as RespondToAuthChallengeResponse["ChallengeParameters"],
-          Session: randomUUID(),
-        };
+        return newPasswordChallenge(user);
       }
     } else if (req.ChallengeName === "MFA_SETUP") {
       // MFA_SETUP is returned when a user needs to set up TOTP MFA

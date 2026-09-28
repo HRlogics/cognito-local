@@ -12,7 +12,7 @@ import {
 import type { Services } from "../services";
 import * as srp from "../services/srp";
 import { verify as verifyTotp } from "../services/totp";
-import { assertCanSignIn } from "./challenges";
+import { assertCanSignIn, newPasswordChallenge } from "./challenges";
 import type { Target } from "./Target";
 
 export type AdminRespondToAuthChallengeTarget = Target<
@@ -136,14 +136,7 @@ export const AdminRespondToAuthChallenge =
         };
       }
       if (user.UserStatus === "FORCE_CHANGE_PASSWORD") {
-        return {
-          ChallengeName: "NEW_PASSWORD_REQUIRED",
-          ChallengeParameters: {
-            USER_ID_FOR_SRP: user.Username,
-            requiredAttributes: JSON.stringify([]),
-          } as AdminRespondToAuthChallengeResponse["ChallengeParameters"],
-          Session: randomUUID(),
-        };
+        return newPasswordChallenge(user);
       }
     } else if (req.ChallengeName === "MFA_SETUP") {
       if (!req.ChallengeResponses.SOFTWARE_TOKEN_MFA_CODE) {
