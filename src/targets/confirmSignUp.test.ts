@@ -86,6 +86,35 @@ describe("ConfirmSignUp target", () => {
       });
     });
 
+    it("marks the attribute the code was sent to as verified", async () => {
+      mockUserPoolService.options.AutoVerifiedAttributes = ["email"];
+      const user = TDB.user({
+        Attributes: [
+          { Name: "email", Value: "a@example.com" },
+          { Name: "email_verified", Value: "false" },
+        ],
+        ConfirmationCode: "456789",
+        UserStatus: "UNCONFIRMED",
+      });
+      mockUserPoolService.getUserByUsername.mockResolvedValue(user);
+
+      await confirmSignUp(TestContext, {
+        ClientId: "clientId",
+        Username: user.Username,
+        ConfirmationCode: "456789",
+      });
+
+      expect(mockUserPoolService.saveUser).toHaveBeenCalledWith(
+        TestContext,
+        expect.objectContaining({
+          Attributes: [
+            { Name: "email", Value: "a@example.com" },
+            { Name: "email_verified", Value: "true" },
+          ],
+        }),
+      );
+    });
+
     describe("when PostConfirmation trigger configured", () => {
       it("invokes the trigger", async () => {
         mockTriggers.enabled.mockReturnValue(true);

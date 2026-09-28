@@ -9,6 +9,7 @@ import {
   NotAuthorizedError,
 } from "../errors";
 import type { Services } from "../services";
+import { selectAppropriateDeliveryMethod } from "../services/messageDelivery/deliveryMethod";
 import {
   attribute,
   attributesAppend,
@@ -42,8 +43,20 @@ export const ConfirmSignUp =
       throw new CodeMismatchError();
     }
 
+    // the code went to this attribute (same choice as SignUp), so confirming proves it
+    const verifiedBy = selectAppropriateDeliveryMethod(
+      userPool.options.AutoVerifiedAttributes ?? [],
+      user,
+    );
+
     const updatedUser = {
       ...user,
+      Attributes: verifiedBy
+        ? attributesAppend(
+            user.Attributes,
+            attribute(`${verifiedBy.AttributeName}_verified`, "true"),
+          )
+        : user.Attributes,
       UserStatus: "CONFIRMED",
       ConfirmationCode: undefined,
       UserLastModifiedDate: clock.get(),
