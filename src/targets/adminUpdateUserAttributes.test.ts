@@ -58,6 +58,95 @@ describe("AdminUpdateUserAttributes target", () => {
     ).rejects.toEqual(new NotAuthorizedError());
   });
 
+  describe("when email requires verification before update", () => {
+    beforeEach(() => {
+      mockUserPoolService.options.AutoVerifiedAttributes = ["email"];
+      mockUserPoolService.options.UserAttributeUpdateSettings = {
+        AttributesRequireVerificationBeforeUpdate: ["email"],
+      };
+    });
+
+    it("applies an email sent with email_verified=true immediately, without a code", async () => {
+      const user = TDB.user({
+        Attributes: [
+          { Name: "email", Value: "old@example.com" },
+          { Name: "email_verified", Value: "true" },
+        ],
+      });
+      mockUserPoolService.getUserByUsername.mockResolvedValue(user);
+
+      await adminUpdateUserAttributes(TestContext, {
+        UserPoolId: "test",
+        Username: user.Username,
+        UserAttributes: [
+          { Name: "email", Value: "new@example.com" },
+          { Name: "email_verified", Value: "true" },
+        ],
+      });
+
+      expect(mockUserPoolService.saveUser).toHaveBeenCalledWith(
+        TestContext,
+        expect.objectContaining({
+          Attributes: [
+            { Name: "email", Value: "new@example.com" },
+            { Name: "email_verified", Value: "true" },
+          ],
+          UnverifiedAttributeChanges: undefined,
+        }),
+      );
+      expect(mockMessages.deliver).not.toHaveBeenCalled();
+    });
+
+    it("keeps a pending email change when an unrelated attribute is updated", async () => {
+      const pending = [
+        { Name: "email", Value: "new@example.com" },
+        { Name: "email_verified", Value: "false" },
+      ];
+      const user = TDB.user({
+        Attributes: [{ Name: "email", Value: "old@example.com" }],
+        UnverifiedAttributeChanges: pending,
+      });
+      mockUserPoolService.getUserByUsername.mockResolvedValue(user);
+
+      await adminUpdateUserAttributes(TestContext, {
+        UserPoolId: "test",
+        Username: user.Username,
+        UserAttributes: [{ Name: "name", Value: "Ada" }],
+      });
+
+      expect(mockUserPoolService.saveUser).toHaveBeenCalledWith(
+        TestContext,
+        expect.objectContaining({ UnverifiedAttributeChanges: pending }),
+      );
+    });
+  });
+
+  it("deletes a contact attribute and its verified flag when given a blank value", async () => {
+    mockUserPoolService.options.AutoVerifiedAttributes = ["email"];
+    const user = TDB.user({
+      Attributes: [
+        { Name: "email", Value: "old@example.com" },
+        { Name: "email_verified", Value: "true" },
+        { Name: "phone_number", Value: "+61400000000" },
+      ],
+    });
+    mockUserPoolService.getUserByUsername.mockResolvedValue(user);
+
+    await adminUpdateUserAttributes(TestContext, {
+      UserPoolId: "test",
+      Username: user.Username,
+      UserAttributes: [{ Name: "email", Value: "" }],
+    });
+
+    expect(mockUserPoolService.saveUser).toHaveBeenCalledWith(
+      TestContext,
+      expect.objectContaining({
+        Attributes: [{ Name: "phone_number", Value: "+61400000000" }],
+      }),
+    );
+    expect(mockMessages.deliver).not.toHaveBeenCalled();
+  });
+
   it("throws if another user already has the new email", async () => {
     const user = TDB.user();
     const other = TDB.user({

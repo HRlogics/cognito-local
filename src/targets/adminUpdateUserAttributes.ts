@@ -14,6 +14,7 @@ import { selectAppropriateDeliveryMethod } from "../services/messageDelivery/del
 import {
   attributesAppend,
   attributesIncludeMatch,
+  attributeValue,
   hasUnverifiedContactAttributes,
   splitImmediateAndDelayedAttributes,
   type User,
@@ -118,19 +119,45 @@ export const AdminUpdateUserAttributes =
       }
     }
 
+    // An admin can skip verification by sending the contact with its *_verified flag set to
+    // true, and a blank value deletes the attribute; neither waits for a verification code.
+    const requireVerification = (
+      userPool.options.UserAttributeUpdateSettings
+        ?.AttributesRequireVerificationBeforeUpdate ?? []
+    ).filter(
+      (name) =>
+        attributeValue(`${name}_verified`, permittedAttributeChanges) !==
+          "true" && attributeValue(name, permittedAttributeChanges) !== "",
+    );
+    // deleting a contact deletes its *_verified flag too, instead of marking it unverified
+    const deletedContactFlags = ["email", "phone_number"]
+      .filter((name) => attributeValue(name, permittedAttributeChanges) === "")
+      .map((name) => ({ Name: `${name}_verified`, Value: "" }));
     const [immediateAttributes, delayedAttributes] =
       splitImmediateAndDelayedAttributes(
-        permittedAttributeChanges,
-        userPool.options.UserAttributeUpdateSettings
-          ?.AttributesRequireVerificationBeforeUpdate,
+        [...permittedAttributeChanges, ...deletedContactFlags],
+        requireVerification,
       );
+
+    // keep pending changes this request doesn't touch
+    const touched = new Set(
+      permittedAttributeChanges.flatMap((attr) => [
+        attr.Name,
+        `${attr.Name}_verified`,
+      ]),
+    );
+    const pending = [
+      ...(user.UnverifiedAttributeChanges ?? []).filter(
+        (attr) => !touched.has(attr.Name),
+      ),
+      ...delayedAttributes,
+    ];
 
     const updatedUser: User = {
       ...user,
       Attributes: attributesAppend(user.Attributes, ...immediateAttributes),
       UserLastModifiedDate: clock.get(),
-      UnverifiedAttributeChanges:
-        delayedAttributes.length > 0 ? delayedAttributes : undefined,
+      UnverifiedAttributeChanges: pending.length > 0 ? pending : undefined,
     };
 
     await userPool.saveUser(ctx, updatedUser);

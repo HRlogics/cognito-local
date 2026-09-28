@@ -659,7 +659,8 @@ export const validatePhoneNumberAttribute = (
   requestAttributes: AttributeListType | undefined,
 ): void => {
   const phoneNumber = attributeValue("phone_number", requestAttributes);
-  if (phoneNumber !== undefined && !E164_PHONE_NUMBER.test(phoneNumber)) {
+  // a blank value deletes the attribute, so there is nothing to validate
+  if (phoneNumber && !E164_PHONE_NUMBER.test(phoneNumber)) {
     throw new InvalidParameterError("Invalid phone number format.");
   }
 };
@@ -673,7 +674,7 @@ export const validateEmailAttribute = (
   requestAttributes: AttributeListType | undefined,
 ): void => {
   const email = attributeValue("email", requestAttributes);
-  if (email !== undefined && !EMAIL.test(email)) {
+  if (email && !EMAIL.test(email)) {
     throw new InvalidParameterError("Invalid email address format.");
   }
 };
