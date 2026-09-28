@@ -13,6 +13,7 @@ import {
   attributesToRecord,
   attributeValue,
   customAttributes,
+  idTokenStandardAttributes,
   type User,
 } from "./userPoolService";
 
@@ -211,6 +212,11 @@ export class JwtTokenGenerator implements TokenGenerator {
       jti: uuid.v4(),
       sub,
       token_use: "id",
+      ...attributesToRecord(idTokenStandardAttributes(user.Attributes)),
+      ...(attributeValue("phone_number", user.Attributes) && {
+        phone_number_verified:
+          attributeValue("phone_number_verified", user.Attributes) === "true",
+      }),
       ...attributesToRecord(customAttributes(user.Attributes)),
     };
 

@@ -260,6 +260,34 @@ describe("JwtTokenGenerator", () => {
     },
   );
 
+  it("copies standard attributes into the id token only", async () => {
+    const tokens = await tokenGenerator.generate(
+      TestContext,
+      TDB.user({
+        Attributes: [
+          { Name: "given_name", Value: "Ada" },
+          { Name: "family_name", Value: "Lovelace" },
+          { Name: "phone_number", Value: "+15550100" },
+          { Name: "phone_number_verified", Value: "true" },
+          { Name: "custom:team", Value: "blue" },
+        ],
+      }),
+      [],
+      TDB.appClient(),
+      undefined,
+      "Authentication",
+    );
+
+    expect(jwt.decode(tokens.IdToken)).toMatchObject({
+      given_name: "Ada",
+      family_name: "Lovelace",
+      phone_number: "+15550100",
+      phone_number_verified: true,
+      "custom:team": "blue",
+    });
+    expect(jwt.decode(tokens.AccessToken)).not.toHaveProperty("given_name");
+  });
+
   describe("expiration configuration", () => {
     describe("no token validity configured", () => {
       it("generates default expiration times", async () => {

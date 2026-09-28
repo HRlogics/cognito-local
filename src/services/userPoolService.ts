@@ -96,6 +96,35 @@ export const attributesRemove = (
 ): AttributeListType =>
   attributes?.filter((x) => !toRemove.includes(x.Name)) ?? [];
 
+// OIDC standard attributes Cognito copies into the id token (sub, email and the
+// *_verified flags are set separately). See
+// https://docs.aws.amazon.com/cognito/latest/developerguide/user-pool-settings-attributes.html
+const idTokenStandardAttributeNames = new Set([
+  "address",
+  "birthdate",
+  "family_name",
+  "gender",
+  "given_name",
+  "locale",
+  "middle_name",
+  "name",
+  "nickname",
+  "phone_number",
+  "picture",
+  "preferred_username",
+  "profile",
+  "updated_at",
+  "website",
+  "zoneinfo",
+]);
+
+export const idTokenStandardAttributes = (
+  attributes: AttributeListType | undefined,
+): AttributeListType =>
+  (attributes ?? []).filter((attr) =>
+    idTokenStandardAttributeNames.has(attr.Name),
+  );
+
 export const customAttributes = (
   attributes: AttributeListType | undefined,
 ): AttributeListType =>
