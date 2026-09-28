@@ -4,7 +4,11 @@ services:
     ports:
       - "9229:9229"
     volumes:
-      - ./.cognito:/app/.cognito
+      # named volume: the container runs as uid 1000, a host bind mount must be writable by it
+      - cognito-data:/app/.cognito
     environment:
       - HOST=0.0.0.0
       - PORT=9229
+
+volumes:
+  cognito-data:

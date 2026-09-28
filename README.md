@@ -65,7 +65,7 @@ docker compose up
 Prebuilt multi-arch image (amd64, arm64), published from `master`:
 
 ```bash
-docker run --rm -p 9229:9229 -v "$PWD/.cognito:/app/.cognito" ghcr.io/hrlogics/cognito-local:latest
+docker run --rm -p 9229:9229 -v cognito-data:/app/.cognito ghcr.io/hrlogics/cognito-local:latest
 ```
 
 ### Point your SDK at it
@@ -237,7 +237,7 @@ Supported triggers: PreSignUp, PostConfirmation, PostAuthentication, PreAuthenti
 
 ### Data Storage
 
-User Pools are stored as JSON files in `.cognito/db/`. Clients are stored in `.cognito/db/clients.json`. Mount this directory as a volume in Docker to persist data between runs.
+User Pools are stored as JSON files in `.cognito/db/`. Clients are stored in `.cognito/db/clients.json`. In Docker, mount a volume at `/app/.cognito` to persist data between runs. The container runs as the `node` user (uid 1000), so a host bind mount must be writable by uid 1000 (rootless podman: add `--userns=keep-id`).
 
 ---
 
