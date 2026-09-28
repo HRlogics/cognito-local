@@ -17,4 +17,6 @@ EXPOSE 9229
 ENV HOST=0.0.0.0
 ENV PORT=9229
 VOLUME /app/.cognito
+HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=3 \
+  CMD wget -qO /dev/null "http://127.0.0.1:${PORT}/health" || exit 1
 ENTRYPOINT ["node", "/app/start.js"]
