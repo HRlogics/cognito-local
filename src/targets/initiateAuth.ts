@@ -7,7 +7,6 @@ import type {
 import { v4 } from "uuid";
 import {
   InvalidParameterError,
-  InvalidPasswordError,
   NotAuthorizedError,
   PasswordResetRequiredError,
   UnsupportedError,
@@ -248,7 +247,7 @@ const userPasswordAuthFlow = async (
     return newPasswordChallenge(user);
   }
   if (user.Password !== req.AuthParameters.PASSWORD) {
-    throw new InvalidPasswordError();
+    throw new NotAuthorizedError("Incorrect username or password.");
   }
   if (user.UserStatus === "UNCONFIRMED") {
     throw new UserNotConfirmedException();

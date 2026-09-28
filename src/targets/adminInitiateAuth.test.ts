@@ -197,6 +197,22 @@ describe("AdminInitiateAuth target", () => {
     });
   });
 
+  it("throws NotAuthorizedException on a wrong password", async () => {
+    const user = TDB.user();
+    mockUserPoolService.getUserByUsername.mockResolvedValue(user);
+
+    await expect(
+      adminInitiateAuth(TestContext, {
+        AuthFlow: "ADMIN_USER_PASSWORD_AUTH",
+        ClientId: userPoolClient.ClientId,
+        UserPoolId: userPoolClient.UserPoolId,
+        AuthParameters: { USERNAME: user.Username, PASSWORD: "bad-password" },
+      }),
+    ).rejects.toEqual(
+      new NotAuthorizedError("Incorrect username or password."),
+    );
+  });
+
   it.each(["ADMIN_USER_PASSWORD_AUTH", "REFRESH_TOKEN_AUTH"])(
     "throws if the user is disabled (%s)",
     async (authFlow) => {

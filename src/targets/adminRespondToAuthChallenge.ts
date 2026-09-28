@@ -6,7 +6,6 @@ import { v4 } from "uuid";
 import {
   CodeMismatchError,
   InvalidParameterError,
-  InvalidPasswordError,
   NotAuthorizedError,
   UnsupportedError,
 } from "../errors";
@@ -98,7 +97,7 @@ export const AdminRespondToAuthChallenge =
       });
     } else if (req.ChallengeName === "PASSWORD_VERIFIER") {
       if (user.Password === undefined) {
-        throw new InvalidPasswordError();
+        throw new NotAuthorizedError("Incorrect username or password.");
       }
       if (
         (userPool.options.MfaConfiguration === "OPTIONAL" &&
