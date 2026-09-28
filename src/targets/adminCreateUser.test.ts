@@ -73,7 +73,7 @@ describe("AdminCreateUser target", () => {
       });
     });
 
-    it("applies autoVerify flags but keeps FORCE_CHANGE_PASSWORD", async () => {
+    it("ignores the auto-confirm and auto-verify flags", async () => {
       mockTriggers.preSignUp.mockResolvedValue({
         autoConfirmUser: true,
         autoVerifyEmail: true,
@@ -96,9 +96,8 @@ describe("AdminCreateUser target", () => {
         expect.objectContaining({
           Attributes: [
             { Name: "email", Value: "example@example.com" },
-            { Name: "email_verified", Value: "true" },
+            { Name: "email_verified", Value: "false" },
             { Name: "phone_number", Value: "+61400000000" },
-            { Name: "phone_number_verified", Value: "true" },
             { Name: "sub", Value: expect.stringMatching(UUID) },
           ],
           UserStatus: "FORCE_CHANGE_PASSWORD",

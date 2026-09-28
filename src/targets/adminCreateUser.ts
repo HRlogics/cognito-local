@@ -10,8 +10,6 @@ import type { Messages, Services, UserPoolService } from "../services";
 import type { Context } from "../services/context";
 import type { DeliveryDetails } from "../services/messageDelivery/messageDelivery";
 import {
-  attribute,
-  attributesAppend,
   attributesInclude,
   attributesToRecord,
   attributeValue,
@@ -141,7 +139,7 @@ export const AdminCreateUser =
     }
 
     const sub = uuid.v4();
-    let attributes = attributesInclude("sub", req.UserAttributes)
+    const attributes = attributesInclude("sub", req.UserAttributes)
       ? (req.UserAttributes ?? [])
       : [{ Name: "sub", Value: sub }, ...(req.UserAttributes ?? [])];
 
@@ -170,32 +168,19 @@ export const AdminCreateUser =
     }
 
     if (triggers.enabled("PreSignUp")) {
-      // autoConfirmUser is not applied: an admin-created user always starts in
-      // FORCE_CHANGE_PASSWORD and confirms by setting a new password
-      const { autoVerifyEmail, autoVerifyPhone } = await triggers.preSignUp(
-        ctx,
-        {
-          clientId: "CLIENT_ID_NOT_APPLICABLE",
-          clientMetadata: req.ClientMetadata,
-          source: "PreSignUp_AdminCreateUser",
-          userAttributes: attributes,
-          username,
-          userPoolId: userPool.options.Id,
-          validationData: req.ValidationData
-            ? attributesToRecord(req.ValidationData)
-            : undefined,
-        },
-      );
-
-      attributes = attributesAppend(
-        attributes,
-        ...(autoVerifyEmail && attributesInclude("email", attributes)
-          ? [attribute("email_verified", "true")]
-          : []),
-        ...(autoVerifyPhone && attributesInclude("phone_number", attributes)
-          ? [attribute("phone_number_verified", "true")]
-          : []),
-      );
+      // runs for validation only: Cognito ignores autoConfirmUser, autoVerifyEmail and
+      // autoVerifyPhone for AdminCreateUser, so the attributes stay as the admin sent them
+      await triggers.preSignUp(ctx, {
+        clientId: "CLIENT_ID_NOT_APPLICABLE",
+        clientMetadata: req.ClientMetadata,
+        source: "PreSignUp_AdminCreateUser",
+        userAttributes: [...attributes],
+        username,
+        userPoolId: userPool.options.Id,
+        validationData: req.ValidationData
+          ? attributesToRecord(req.ValidationData)
+          : undefined,
+      });
     }
 
     const user: User = {
