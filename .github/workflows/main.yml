@@ -19,7 +19,7 @@ jobs:
           node-version-file: .tool-versions
           cache: npm
       - run: npm ci
-      - run: npm run lint
+      - run: npx biome ci
 
   test:
     runs-on: ubuntu-latest
