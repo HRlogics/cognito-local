@@ -185,6 +185,41 @@ describe("USER_SRP_AUTH end-to-end", () => {
     });
   });
 
+  describe("FORCE_CHANGE_PASSWORD user", () => {
+    it("returns NEW_PASSWORD_REQUIRED with parseable userAttributes", async () => {
+      user = TDB.user({
+        Username: "alice",
+        Password: PASSWORD,
+        UserStatus: "FORCE_CHANGE_PASSWORD",
+        Attributes: [{ Name: "email", Value: "alice@example.com" }],
+      });
+      mockUserPoolService.getUserByUsername.mockResolvedValue(user);
+      const session = createSrpSession(user.Username, PASSWORD, POOL_ID, false);
+      const initResp = await initiateAuth(
+        TestContext,
+        wrapInitiateAuth(session, {
+          ClientId: userPoolClient.ClientId,
+          AuthFlow: "USER_SRP_AUTH",
+          AuthParameters: { USERNAME: user.Username },
+        }),
+      );
+
+      const resp = await respondToAuthChallenge(
+        TestContext,
+        wrapAuthChallenge(signSrpSession(session, initResp), {
+          ClientId: userPoolClient.ClientId,
+          ChallengeName: "PASSWORD_VERIFIER",
+          ChallengeResponses: { USERNAME: user.Username },
+        }),
+      );
+
+      expect(resp.ChallengeName).toBe("NEW_PASSWORD_REQUIRED");
+      expect(
+        JSON.parse(resp.ChallengeParameters?.userAttributes ?? ""),
+      ).toEqual({ email: "alice@example.com" });
+    });
+  });
+
   describe("input validation", () => {
     it("throws InvalidParameterError for malformed SRP_A hex", async () => {
       await expect(
