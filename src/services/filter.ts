@@ -1,7 +1,7 @@
 import { InvalidParameterError } from "../errors";
 
 const FilterExpression = new RegExp(
-  /^\s*(?<attr>.*)\s+(?<type>\^?=)\s+"(?<value>.*)"\s*$/,
+  /^\s*"?(?<attr>[\w:]+)"?\s*(?<type>\^?=)\s*"(?<value>.*)"\s*$/,
 );
 
 type Matcher<T> = (obj: T, filterType: "=" | "^=", value: string) => boolean;
