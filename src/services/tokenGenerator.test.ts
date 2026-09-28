@@ -69,6 +69,35 @@ describe("JwtTokenGenerator", () => {
       });
     });
 
+    it("passes the user's groups to the trigger", async () => {
+      mockTriggers.enabled.mockImplementation(
+        (name) => name === "PreTokenGeneration",
+      );
+      mockTriggers.preTokenGeneration.mockResolvedValue({
+        claimsOverrideDetails: {},
+      });
+
+      await tokenGenerator.generate(
+        TestContext,
+        user,
+        ["admins", "editors"],
+        TDB.appClient(),
+        undefined,
+        "Authentication",
+      );
+
+      expect(mockTriggers.preTokenGeneration).toHaveBeenCalledWith(
+        TestContext,
+        expect.objectContaining({
+          groupConfiguration: {
+            groupsToOverride: ["admins", "editors"],
+            iamRolesToOverride: [],
+            preferredRole: undefined,
+          },
+        }),
+      );
+    });
+
     it("can suppress claims in the id token", async () => {
       mockTriggers.enabled.mockImplementation((name) => {
         return name === "PreTokenGeneration";
