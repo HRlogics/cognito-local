@@ -249,22 +249,19 @@ export class JwtTokenGenerator implements TokenGenerator {
 
     const issuer = `${this.tokenConfig.IssuerDomain}/${userPoolClient.UserPoolId}`;
 
+    // one value for both, so the advertised ExpiresIn always equals the JWT's exp
+    const accessTokenTtl = expiresInSeconds(
+      userPoolClient.AccessTokenValidity,
+      userPoolClient.TokenValidityUnits?.AccessToken ?? "hours",
+      24 * 60 * 60,
+    );
+
     return {
-      ExpiresIn: expiresInSeconds(
-        userPoolClient.AccessTokenValidity,
-        userPoolClient.TokenValidityUnits?.AccessToken ?? "hours",
-        // Match the access-token JWT's "24h" default below so the advertised
-        // TTL equals the token's real exp.
-        24 * 60 * 60,
-      ),
+      ExpiresIn: accessTokenTtl,
       AccessToken: jwt.sign(accessToken, PrivateKey.pem, {
         algorithm: "RS256",
         issuer,
-        expiresIn: formatExpiration(
-          userPoolClient.AccessTokenValidity,
-          userPoolClient.TokenValidityUnits?.AccessToken ?? "hours",
-          "24h",
-        ),
+        expiresIn: accessTokenTtl,
         keyid: "CognitoLocal",
       } satisfies SignOptions),
       IdToken: jwt.sign(idToken, PrivateKey.pem, {
