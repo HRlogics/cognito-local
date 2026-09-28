@@ -2,13 +2,18 @@ import type {
   AdminUpdateUserAttributesRequest,
   AdminUpdateUserAttributesResponse,
 } from "aws-sdk/clients/cognitoidentityserviceprovider";
-import { InvalidParameterError, NotAuthorizedError } from "../errors";
+import {
+  AliasExistsError,
+  InvalidParameterError,
+  NotAuthorizedError,
+} from "../errors";
 import type { Messages, Services, UserPoolService } from "../services";
 import { USER_POOL_AWS_DEFAULTS } from "../services/cognitoService";
 import type { Context } from "../services/context";
 import { selectAppropriateDeliveryMethod } from "../services/messageDelivery/deliveryMethod";
 import {
   attributesAppend,
+  attributesIncludeMatch,
   defaultVerifiedAttributesIfModified,
   hasUnverifiedContactAttributes,
   type User,
@@ -83,6 +88,32 @@ export const AdminUpdateUserAttributes =
           [],
       ),
     );
+
+    // email / phone_number double as sign-in names, so another user must not hold the new value
+    const signInAttributes = [
+      ...(userPool.options.UsernameAttributes ?? []),
+      ...(userPool.options.AliasAttributes ?? []),
+    ];
+    const signInChanges = userAttributesToSet.filter(
+      (attr) => attr.Value && signInAttributes.includes(attr.Name),
+    );
+    if (signInChanges.length) {
+      const users = await userPool.listUsers(ctx);
+      const taken = signInChanges.some((attr) =>
+        users.some(
+          (other) =>
+            other.Username !== user.Username &&
+            attributesIncludeMatch(
+              attr.Name,
+              attr.Value as string,
+              other.Attributes,
+            ),
+        ),
+      );
+      if (taken) {
+        throw new AliasExistsError();
+      }
+    }
 
     const updatedUser = {
       ...user,

@@ -5,7 +5,11 @@ import { newMockMessages } from "../__tests__/mockMessages";
 import { newMockUserPoolService } from "../__tests__/mockUserPoolService";
 import { TestContext } from "../__tests__/testContext";
 import * as TDB from "../__tests__/testDataBuilder";
-import { InvalidParameterError, NotAuthorizedError } from "../errors";
+import {
+  AliasExistsError,
+  InvalidParameterError,
+  NotAuthorizedError,
+} from "../errors";
 import type { Messages, UserPoolService } from "../services";
 import {
   attribute,
@@ -46,6 +50,30 @@ describe("AdminUpdateUserAttributes target", () => {
         Username: "abc",
       }),
     ).rejects.toEqual(new NotAuthorizedError());
+  });
+
+  it("throws if another user already has the new email", async () => {
+    const user = TDB.user();
+    const other = TDB.user({
+      Attributes: [attribute("email", "taken@example.com")],
+    });
+
+    mockUserPoolService.getUserByUsername.mockResolvedValue(user);
+    mockUserPoolService.listUsers.mockResolvedValue([user, other]);
+    mockUserPoolService.options.UsernameAttributes = ["email"];
+    mockUserPoolService.options.SchemaAttributes = [
+      { Name: "email", Mutable: true },
+      { Name: "email_verified", Mutable: true },
+    ];
+
+    await expect(
+      adminUpdateUserAttributes(TestContext, {
+        UserPoolId: "test",
+        UserAttributes: [attribute("email", "taken@example.com")],
+        Username: user.Username,
+      }),
+    ).rejects.toEqual(new AliasExistsError());
+    expect(mockUserPoolService.saveUser).not.toHaveBeenCalled();
   });
 
   it("saves the updated attributes on the user", async () => {
