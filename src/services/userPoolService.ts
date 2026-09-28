@@ -744,6 +744,60 @@ export const hasUnverifiedContactAttributes = (
   attributeValue("phone_number_verified", userAttributesToSet) === "false";
 
 /**
+ * Applies an attribute update request to a user, for UpdateUserAttributes and
+ * AdminUpdateUserAttributes alike:
+ * - attributes in AttributesRequireVerificationBeforeUpdate wait in UnverifiedAttributeChanges,
+ *   unless sent with their *_verified flag set to true or blank (a blank value deletes);
+ * - deleting a contact deletes its *_verified flag too, instead of marking it unverified;
+ * - pending changes the request doesn't touch are kept.
+ * Returns the updated Attributes and UnverifiedAttributeChanges, plus the immediate and delayed
+ * changes so the caller can decide whether to send a verification code.
+ */
+export const applyAttributeUpdate = (
+  user: User,
+  changes: AttributeListType,
+  attributesRequireVerificationBeforeUpdate: readonly string[] | undefined,
+): {
+  Attributes: AttributeListType;
+  UnverifiedAttributeChanges: AttributeListType | undefined;
+  immediateAttributes: AttributeListType;
+  delayedAttributes: AttributeListType;
+} => {
+  const requireVerification = (
+    attributesRequireVerificationBeforeUpdate ?? []
+  ).filter(
+    (name) =>
+      attributeValue(`${name}_verified`, changes) !== "true" &&
+      attributeValue(name, changes) !== "",
+  );
+  const deletedContactFlags = ["email", "phone_number"]
+    .filter((name) => attributeValue(name, changes) === "")
+    .map((name) => attribute(`${name}_verified`, ""));
+  const [immediateAttributes, delayedAttributes] =
+    splitImmediateAndDelayedAttributes(
+      [...changes, ...deletedContactFlags],
+      requireVerification,
+    );
+
+  const touched = new Set(
+    changes.flatMap((attr) => [attr.Name, `${attr.Name}_verified`]),
+  );
+  const pending = [
+    ...(user.UnverifiedAttributeChanges ?? []).filter(
+      (attr) => !touched.has(attr.Name),
+    ),
+    ...delayedAttributes,
+  ];
+
+  return {
+    Attributes: attributesAppend(user.Attributes, ...immediateAttributes),
+    UnverifiedAttributeChanges: pending.length > 0 ? pending : undefined,
+    immediateAttributes,
+    delayedAttributes,
+  };
+};
+
+/**
  * Splits user attributes into two lists:
  * - Immediate attributes that can be set without verification
  * - Delayed attributes that require verification before they can be set

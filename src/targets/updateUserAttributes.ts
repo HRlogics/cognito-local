@@ -10,11 +10,12 @@ import type { Context } from "../services/context";
 import { selectAppropriateDeliveryMethod } from "../services/messageDelivery/deliveryMethod";
 import type { Token } from "../services/tokenGenerator";
 import {
-  attributesAppend,
+  applyAttributeUpdate,
   hasUnverifiedContactAttributes,
-  splitImmediateAndDelayedAttributes,
   type User,
+  validateEmailAttribute,
   validatePermittedAttributeChanges,
+  validatePhoneNumberAttribute,
 } from "../services/userPoolService";
 import type { Target } from "./Target";
 
@@ -69,6 +70,9 @@ export const UpdateUserAttributes =
     messages,
   }: UpdateUserAttributesServices): UpdateUserAttributesTarget =>
   async (ctx, req) => {
+    validatePhoneNumberAttribute(req.UserAttributes);
+    validateEmailAttribute(req.UserAttributes);
+
     const decodedToken = jwt.decode(req.AccessToken) as Token | null;
     if (!decodedToken) {
       ctx.logger.info("Unable to decode token");
@@ -95,8 +99,9 @@ export const UpdateUserAttributes =
         [],
     );
 
-    const [immediateAttributes, delayedAttributes] =
-      splitImmediateAndDelayedAttributes(
+    const { immediateAttributes, delayedAttributes, ...attributeUpdate } =
+      applyAttributeUpdate(
+        user,
         permittedAttributeChanges,
         userPool.options.UserAttributeUpdateSettings
           ?.AttributesRequireVerificationBeforeUpdate,
@@ -104,10 +109,8 @@ export const UpdateUserAttributes =
 
     const updatedUser: User = {
       ...user,
-      Attributes: attributesAppend(user.Attributes, ...immediateAttributes),
+      ...attributeUpdate,
       UserLastModifiedDate: clock.get(),
-      UnverifiedAttributeChanges:
-        delayedAttributes.length > 0 ? delayedAttributes : undefined,
     };
 
     await userPool.saveUser(ctx, updatedUser);
