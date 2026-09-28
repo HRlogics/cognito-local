@@ -1,4 +1,4 @@
-import * as uuid from "uuid";
+import { randomUUID } from "node:crypto";
 import type { Services } from "../services";
 import type { ManagedLoginBranding } from "../services/userPoolService";
 import type { Target } from "./Target";
@@ -28,7 +28,7 @@ export const CreateManagedLoginBranding =
     const now = clock.get();
 
     const branding = {
-      ManagedLoginBrandingId: uuid.v4(),
+      ManagedLoginBrandingId: randomUUID(),
       UserPoolId: req.UserPoolId,
       ClientId: req.ClientId,
       Settings: req.Settings,

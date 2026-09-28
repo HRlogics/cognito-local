@@ -1,9 +1,9 @@
+import { randomUUID } from "node:crypto";
 import type { StringMap } from "aws-lambda/trigger/cognito-user-pool-trigger/_common";
 import type { GroupOverrideDetails } from "aws-lambda/trigger/cognito-user-pool-trigger/pre-token-generation";
 import type { TimeUnitsType } from "aws-sdk/clients/cognitoidentityserviceprovider";
 import jwt, { type SignOptions } from "jsonwebtoken";
 import type { StringValue, UnitAnyCase } from "ms";
-import * as uuid from "uuid";
 import PrivateKey from "../keys/cognitoLocal.private.json";
 import type { AppClient } from "./appClient";
 import type { Clock } from "./clock";
@@ -185,7 +185,7 @@ export class JwtTokenGenerator implements TokenGenerator {
       | "NewPasswordChallenge"
       | "RefreshTokens",
   ): Promise<Tokens> {
-    const eventId = uuid.v4();
+    const eventId = randomUUID();
     const authTime = Math.floor(this.clock.get().getTime() / 1000);
     const sub = attributeValue("sub", user.Attributes);
 
@@ -194,7 +194,7 @@ export class JwtTokenGenerator implements TokenGenerator {
       client_id: userPoolClient.ClientId,
       event_id: eventId,
       iat: authTime,
-      jti: uuid.v4(),
+      jti: randomUUID(),
       scope: "aws.cognito.signin.user.admin", // TODO: scopes
       sub,
       token_use: "access",
@@ -209,7 +209,7 @@ export class JwtTokenGenerator implements TokenGenerator {
         attributeValue("email_verified", user.Attributes) === "true",
       event_id: eventId,
       iat: authTime,
-      jti: uuid.v4(),
+      jti: randomUUID(),
       sub,
       token_use: "id",
       ...attributesToRecord(idTokenStandardAttributes(user.Attributes)),
@@ -282,7 +282,7 @@ export class JwtTokenGenerator implements TokenGenerator {
           "cognito:username": user.Username,
           email: attributeValue("email", user.Attributes),
           iat: authTime,
-          jti: uuid.v4(),
+          jti: randomUUID(),
         },
         PrivateKey.pem,
         {

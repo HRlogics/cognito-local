@@ -1,9 +1,9 @@
+import { randomUUID } from "node:crypto";
 import type {
   SignUpRequest,
   SignUpResponse,
   UserStatusType,
 } from "aws-sdk/clients/cognitoidentityserviceprovider";
-import * as uuid from "uuid";
 import { InvalidParameterError, UsernameExistsError } from "../errors";
 import type { Messages, Services, UserPoolService } from "../services";
 import type { Context } from "../services/context";
@@ -81,7 +81,7 @@ export const SignUp =
       throw new UsernameExistsError();
     }
 
-    const sub = uuid.v4();
+    const sub = randomUUID();
     const attributes =
       (attributesInclude("sub", req.UserAttributes)
         ? req.UserAttributes

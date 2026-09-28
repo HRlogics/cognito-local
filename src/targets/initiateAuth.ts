@@ -4,7 +4,6 @@ import type {
   InitiateAuthRequest,
   InitiateAuthResponse,
 } from "aws-sdk/clients/cognitoidentityserviceprovider";
-import { v4 } from "uuid";
 import {
   InvalidParameterError,
   NotAuthorizedError,
@@ -86,7 +85,7 @@ const smsMfaChallenge = async (
       CODE_DELIVERY_DESTINATION: deliveryDestination,
       USER_ID_FOR_SRP: user.Username,
     },
-    Session: v4(),
+    Session: crypto.randomUUID(),
   };
 };
 
@@ -101,7 +100,7 @@ const softwareTokenMfaChallenge = (user: User): InitiateAuthResponse => ({
         }
       : {}),
   },
-  Session: v4(),
+  Session: crypto.randomUUID(),
 });
 
 const enabledMfaMethods = (
@@ -147,7 +146,7 @@ const verifyMfaChallenge = async (
         USER_ID_FOR_SRP: user.Username,
         MFAS_CAN_CHOOSE: JSON.stringify(methods),
       },
-      Session: v4(),
+      Session: crypto.randomUUID(),
     };
   }
 
@@ -196,7 +195,7 @@ const newPasswordChallenge = (user: User): InitiateAuthResponse => ({
     requiredAttributes: JSON.stringify([]),
     userAttributes: JSON.stringify(attributesToRecord(user.Attributes)),
   },
-  Session: v4(),
+  Session: crypto.randomUUID(),
 });
 
 const userPasswordAuthFlow = async (
@@ -420,7 +419,7 @@ const userSrpAuthFlow = async (
       USER_ID_FOR_SRP: user.Username,
       USERNAME: user.Username,
     },
-    Session: v4(),
+    Session: crypto.randomUUID(),
   };
 };
 
@@ -503,7 +502,7 @@ const customAuthFlow = async (
       ...challengeResult.publicChallengeParameters,
       USER_ID_FOR_SRP: user.Username,
     },
-    Session: v4(),
+    Session: crypto.randomUUID(),
   };
 };
 

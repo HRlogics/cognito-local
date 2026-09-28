@@ -1,4 +1,4 @@
-import * as uuid from "uuid";
+import { randomUUID } from "node:crypto";
 
 const TTL_MS = 5 * 60 * 1000;
 
@@ -20,7 +20,7 @@ export class AuthorizationCodeStore {
   private readonly codes = new Map<string, Entry>();
 
   create(data: StoredCode): string {
-    const code = uuid.v4();
+    const code = randomUUID();
     this.codes.set(code, { ...data, expiresAt: Date.now() + TTL_MS });
     return code;
   }

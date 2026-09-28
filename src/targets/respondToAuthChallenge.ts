@@ -1,10 +1,9 @@
-import { timingSafeEqual } from "node:crypto";
+import { randomUUID, timingSafeEqual } from "node:crypto";
 import type {
   DeliveryMediumType,
   RespondToAuthChallengeRequest,
   RespondToAuthChallengeResponse,
 } from "aws-sdk/clients/cognitoidentityserviceprovider";
-import { v4 } from "uuid";
 import {
   CodeMismatchError,
   InvalidParameterError,
@@ -80,7 +79,7 @@ const sendSmsMfaChallenge = async (
       CODE_DELIVERY_DESTINATION: deliveryDestination,
       USER_ID_FOR_SRP: user.Username,
     },
-    Session: v4(),
+    Session: randomUUID(),
   };
 };
 
@@ -140,7 +139,7 @@ export const RespondToAuthChallenge =
                 }
               : {}),
           },
-          Session: v4(),
+          Session: randomUUID(),
         };
       }
       throw new InvalidParameterError(
@@ -267,7 +266,7 @@ export const RespondToAuthChallenge =
           ChallengeParameters: {
             USER_ID_FOR_SRP: user.Username,
           } as RespondToAuthChallengeResponse["ChallengeParameters"],
-          Session: v4(),
+          Session: randomUUID(),
         };
       }
 
@@ -280,7 +279,7 @@ export const RespondToAuthChallenge =
             // amazon-cognito-identity-js JSON.parses userAttributes, so it must be present
             userAttributes: JSON.stringify(attributesToRecord(user.Attributes)),
           } as RespondToAuthChallengeResponse["ChallengeParameters"],
-          Session: v4(),
+          Session: randomUUID(),
         };
       }
     } else if (req.ChallengeName === "MFA_SETUP") {

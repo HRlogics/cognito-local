@@ -1,10 +1,10 @@
+import { randomUUID } from "node:crypto";
 import type {
   AdminCreateUserRequest,
   AdminCreateUserResponse,
   DeliveryMediumListType,
 } from "aws-sdk/clients/cognitoidentityserviceprovider";
 import { createTranslator } from "short-uuid";
-import * as uuid from "uuid";
 import { InvalidParameterError, UsernameExistsError } from "../errors";
 import type { Messages, Services, UserPoolService } from "../services";
 import type { Context } from "../services/context";
@@ -138,7 +138,7 @@ export const AdminCreateUser =
       throw new UsernameExistsError();
     }
 
-    const sub = uuid.v4();
+    const sub = randomUUID();
     const attributes = attributesInclude("sub", req.UserAttributes)
       ? (req.UserAttributes ?? [])
       : [{ Name: "sub", Value: sub }, ...(req.UserAttributes ?? [])];

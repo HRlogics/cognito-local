@@ -1,8 +1,8 @@
+import { randomUUID } from "node:crypto";
 import type {
   CreateUserImportJobRequest,
   CreateUserImportJobResponse,
 } from "aws-sdk/clients/cognitoidentityserviceprovider";
-import * as uuid from "uuid";
 import type { Services } from "../services";
 import type { Target } from "./Target";
 
@@ -22,9 +22,9 @@ export const CreateUserImportJob =
 
     const job = {
       JobName: req.JobName,
-      JobId: uuid.v4(),
+      JobId: randomUUID(),
       UserPoolId: req.UserPoolId,
-      PreSignedUrl: `https://cognito-local.example.com/import/${uuid.v4()}`,
+      PreSignedUrl: `https://cognito-local.example.com/import/${randomUUID()}`,
       CreationDate: now,
       Status: "Created" as const,
       CloudWatchLogsRoleArn: req.CloudWatchLogsRoleArn,

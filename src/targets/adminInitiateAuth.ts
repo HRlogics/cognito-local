@@ -1,8 +1,8 @@
+import { randomUUID } from "node:crypto";
 import type {
   AdminInitiateAuthRequest,
   AdminInitiateAuthResponse,
 } from "aws-sdk/clients/cognitoidentityserviceprovider";
-import { v4 } from "uuid";
 import {
   InvalidParameterError,
   NotAuthorizedError,
@@ -91,7 +91,7 @@ const adminUserPasswordAuthFlow = async (
         requiredAttributes: JSON.stringify([]),
         userAttributes: JSON.stringify(attributesToRecord(user.Attributes)),
       },
-      Session: v4(),
+      Session: randomUUID(),
     };
   }
 
@@ -116,7 +116,7 @@ const adminUserPasswordAuthFlow = async (
           ? "SOFTWARE_TOKEN_MFA"
           : "SMS_MFA",
       ChallengeParameters: { USER_ID_FOR_SRP: user.Username },
-      Session: v4(),
+      Session: randomUUID(),
       AuthenticationResult: undefined,
     };
   }
@@ -290,7 +290,7 @@ const customAuthFlow = async (
       ...challengeResult.publicChallengeParameters,
       USER_ID_FOR_SRP: user.Username,
     },
-    Session: v4(),
+    Session: randomUUID(),
   };
 };
 

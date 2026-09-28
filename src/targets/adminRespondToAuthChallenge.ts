@@ -1,8 +1,8 @@
+import { randomUUID } from "node:crypto";
 import type {
   AdminRespondToAuthChallengeRequest,
   AdminRespondToAuthChallengeResponse,
 } from "aws-sdk/clients/cognitoidentityserviceprovider";
-import { v4 } from "uuid";
 import {
   CodeMismatchError,
   InvalidParameterError,
@@ -113,7 +113,7 @@ export const AdminRespondToAuthChallenge =
           ChallengeParameters: {
             USER_ID_FOR_SRP: user.Username,
           } as AdminRespondToAuthChallengeResponse["ChallengeParameters"],
-          Session: v4(),
+          Session: randomUUID(),
         };
       }
       if (user.UserStatus === "FORCE_CHANGE_PASSWORD") {
@@ -123,7 +123,7 @@ export const AdminRespondToAuthChallenge =
             USER_ID_FOR_SRP: user.Username,
             requiredAttributes: JSON.stringify([]),
           } as AdminRespondToAuthChallengeResponse["ChallengeParameters"],
-          Session: v4(),
+          Session: randomUUID(),
         };
       }
     } else if (req.ChallengeName === "MFA_SETUP") {
