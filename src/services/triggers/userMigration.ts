@@ -86,13 +86,16 @@ export const UserMigration =
     }
 
     const now = clock.get();
+    // Cognito assigns sub itself (a lambda cannot set it); a pool without a returned
+    // username gets the sub as username, like SignUp with email usernames
+    const sub = uuid.v4();
     const user: User = {
-      Attributes: attributesFromRecord(result.userAttributes ?? {}),
+      Attributes: attributesFromRecord({ ...result.userAttributes, sub }),
       Enabled: true,
       Password: password,
       UserCreateDate: now,
       UserLastModifiedDate: now,
-      Username: result.userAttributes?.username || uuid.v4(),
+      Username: result.userAttributes?.username || sub,
       UserStatus: result.finalUserStatus ?? "CONFIRMED",
       RefreshTokens: [],
     };

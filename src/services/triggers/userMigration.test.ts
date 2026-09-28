@@ -86,6 +86,10 @@ describe("UserMigration trigger", () => {
 
       expect(user).not.toBeNull();
       expect(user.Username).toEqual(expect.stringMatching(UUID));
+      expect(user.Attributes).toContainEqual({
+        Name: "sub",
+        Value: user.Username,
+      });
       expect(user.Password).toEqual("password");
       expect(user.Attributes).toContainEqual({
         Name: "email",
@@ -119,6 +123,10 @@ describe("UserMigration trigger", () => {
       expect(mockLambda.invoke).toBeCalled();
       expect(user).not.toBeNull();
       expect(user.Username).toEqual("thisuser");
+      expect(user.Attributes).toContainEqual({
+        Name: "sub",
+        Value: expect.stringMatching(UUID),
+      });
     });
 
     it("sets user to RESET_REQUIRED if finalUserStatus is RESET_REQUIRED in response", async () => {
