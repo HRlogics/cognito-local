@@ -129,6 +129,15 @@ CreateGroup, GetGroup, UpdateGroup, DeleteGroup, ListGroups, AdminAddUserToGroup
 
 CreateUserPool, DescribeUserPool, UpdateUserPool, DeleteUserPool, ListUserPools, CreateUserPoolClient, DescribeUserPoolClient, UpdateUserPoolClient, DeleteUserPoolClient, ListUserPoolClients, AddCustomAttributes, AddUserPoolClientSecret, DeleteUserPoolClientSecret, ListUserPoolClientSecrets
 
+Pool and client ids are random unless pinned with reserved tags on `CreateUserPool`. `cognito-local:pool-id` sets the pool id as given; `cognito-local:client-id` sets the id of every client created in that pool later, and `use-name` makes it reuse the `ClientName`. Both tags are dropped from the stored pool. Pinning an id that is already in use fails with `InvalidParameterException`.
+
+```bash
+aws --endpoint http://localhost:9229 cognito-idp create-user-pool --pool-name MyPool \
+  --user-pool-tags cognito-local:pool-id=us-east-1_mypool,cognito-local:client-id=use-name
+aws --endpoint http://localhost:9229 cognito-idp create-user-pool-client \
+  --user-pool-id us-east-1_mypool --client-name my-app   # ClientId: my-app
+```
+
 ### Identity Providers (Federation)
 
 CreateIdentityProvider, DescribeIdentityProvider, UpdateIdentityProvider, DeleteIdentityProvider, ListIdentityProviders, GetIdentityProviderByIdentifier, AdminLinkProviderForUser, AdminDisableProviderForUser

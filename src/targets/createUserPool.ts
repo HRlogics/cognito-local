@@ -4,8 +4,13 @@ import type {
   SchemaAttributesListType,
 } from "aws-sdk/clients/cognitoidentityserviceprovider";
 import { createTranslator } from "short-uuid";
+import { InvalidParameterError } from "../errors";
 import type { Services } from "../services";
 import { USER_POOL_AWS_DEFAULTS } from "../services/cognitoService";
+import {
+  PINNED_CLIENT_ID_TAG,
+  PINNED_POOL_ID_TAG,
+} from "../services/userPoolService";
 import { userPoolToResponseObject } from "./responses";
 import type { Target } from "./Target";
 
@@ -79,7 +84,21 @@ export const CreateUserPool =
   ({ cognito, clock }: CreateUserPoolServices): CreateUserPoolTarget =>
   async (ctx, req) => {
     const now = clock.get();
-    const userPoolId = `${REGION}_${generator.generate().slice(0, 8)}`;
+    const {
+      [PINNED_POOL_ID_TAG]: pinnedPoolId,
+      [PINNED_CLIENT_ID_TAG]: pinnedClientId,
+      ...userPoolTags
+    } = req.UserPoolTags ?? {};
+    const userPoolId =
+      pinnedPoolId ?? `${REGION}_${generator.generate().slice(0, 8)}`;
+    if (
+      pinnedPoolId &&
+      (await cognito.listUserPools(ctx)).some((x) => x.Id === pinnedPoolId)
+    ) {
+      throw new InvalidParameterError(
+        `User Pool ${pinnedPoolId} already exists`,
+      );
+    }
     const userPool = await cognito.createUserPool(ctx, {
       AccountRecoverySetting: req.AccountRecoverySetting,
       AdminCreateUserConfig: req.AdminCreateUserConfig,
@@ -106,10 +125,11 @@ export const CreateUserPool =
       SmsVerificationMessage: req.SmsVerificationMessage,
       UserAttributeUpdateSettings: req.UserAttributeUpdateSettings,
       UserPoolAddOns: req.UserPoolAddOns,
-      UserPoolTags: req.UserPoolTags,
+      UserPoolTags: req.UserPoolTags && userPoolTags,
       UsernameAttributes: req.UsernameAttributes,
       UsernameConfiguration: req.UsernameConfiguration,
       VerificationMessageTemplate: req.VerificationMessageTemplate,
+      _pinnedClientId: pinnedClientId,
     });
 
     return {
