@@ -117,6 +117,8 @@ export interface User {
   ConfirmationCode?: string;
   MFACode?: string;
   RefreshTokens: string[];
+  /** epoch seconds of the last global sign-out; access tokens issued at or before it are revoked */
+  AccessTokensRevokedAt?: number;
   Devices?: DeviceType[];
   _webauthnCredentials?: WebAuthnCredential[];
 

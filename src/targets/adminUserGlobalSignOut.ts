@@ -28,6 +28,7 @@ export const AdminUserGlobalSignOut =
     await userPool.saveUser(ctx, {
       ...user,
       RefreshTokens: [],
+      AccessTokensRevokedAt: Math.floor(clock.get().getTime() / 1000),
       UserLastModifiedDate: clock.get(),
     });
 
