@@ -2,7 +2,7 @@
 
 **122 SDK targets + 7 OAuth2/OIDC endpoints = 100% AWS Cognito User Pool API coverage**
 
-`Build: passing` | `Tests: 806 passing` | `License: MIT` | `Node >= 24.21`
+`Build: passing` | `Tests: 859 passing` | `License: MIT` | `Node >= 24.21`
 
 A local Amazon Cognito User Pool emulator for development and testing. Drop-in replacement for the real service -- point your SDK at `http://localhost:9229` and go.
 
@@ -96,7 +96,7 @@ aws --endpoint http://localhost:9229 cognito-idp create-user-pool --pool-name My
 | Category | Targets |
 |----------|---------|
 | Auth flows | InitiateAuth, AdminInitiateAuth, RespondToAuthChallenge, AdminRespondToAuthChallenge |
-| SRP auth | USER_SRP_AUTH, PASSWORD_VERIFIER (simplified -- verifies password directly) |
+| SRP auth | USER_SRP_AUTH, PASSWORD_VERIFIER (real SRP-6a: the PASSWORD_CLAIM_SIGNATURE proof is verified, a wrong password is rejected) |
 | Password auth | USER_PASSWORD_AUTH |
 | Custom auth | CUSTOM_AUTH with DefineAuthChallenge, CreateAuthChallenge, VerifyAuthChallengeResponse triggers |
 | Refresh tokens | GetTokensFromRefreshToken, REFRESH_TOKEN / REFRESH_TOKEN_AUTH |
@@ -322,7 +322,7 @@ This project will become `@nimbus/plugin-cognito` as part of the [Nimbus](https:
 
 1. Fork the repo and create a feature branch.
 2. Write tests for new targets (see existing `*.test.ts` files for patterns).
-3. Run `npm test` and ensure all 806+ tests pass.
+3. Run `npm test` and ensure all 859+ tests pass.
 4. Submit a pull request.
 
 ---
