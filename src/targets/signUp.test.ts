@@ -84,6 +84,7 @@ describe("SignUp target", () => {
           Value: expect.stringMatching(UUID),
         },
         { Name: "email", Value: "example@example.com" },
+        { Name: "email_verified", Value: "false" },
       ],
       Enabled: true,
       Password: "pwd",
@@ -126,6 +127,7 @@ describe("SignUp target", () => {
           Value: expect.stringMatching(UUID),
         },
         { Name: "email", Value: "example@example.com" },
+        { Name: "email_verified", Value: "false" },
       ],
       Enabled: true,
       Password: "pwd",
@@ -294,6 +296,7 @@ describe("SignUp target", () => {
               userAttributes: [
                 { Name: "cognito:user_status", Value: "CONFIRMED" },
                 { Name: "email", Value: "example@example.com" },
+                { Name: "email_verified", Value: "false" },
                 { Name: "sub", Value: expect.stringMatching(UUID) },
               ],
               userPoolId: "test",
@@ -328,6 +331,7 @@ describe("SignUp target", () => {
               userAttributes: [
                 { Name: "cognito:user_status", Value: "CONFIRMED" },
                 { Name: "email", Value: "example@example.com" },
+                { Name: "email_verified", Value: "false" },
                 { Name: "sub", Value: expect.stringMatching(UUID) },
               ],
               userPoolId: "test",
@@ -588,6 +592,7 @@ describe("SignUp target", () => {
           Attributes: [
             { Name: "sub", Value: expect.stringMatching(UUID) },
             { Name: "email", Value: "example@example.com" },
+            { Name: "email_verified", Value: "false" },
           ],
           Enabled: true,
           Password: "pwd",
@@ -657,6 +662,7 @@ describe("SignUp target", () => {
           Attributes: [
             { Name: "sub", Value: expect.stringMatching(UUID) },
             { Name: "phone_number", Value: "0400000000" },
+            { Name: "phone_number_verified", Value: "false" },
           ],
           Enabled: true,
           Password: "pwd",
@@ -733,6 +739,8 @@ describe("SignUp target", () => {
             { Name: "sub", Value: expect.stringMatching(UUID) },
             { Name: "email", Value: "example@example.com" },
             { Name: "phone_number", Value: "0400000000" },
+            { Name: "email_verified", Value: "false" },
+            { Name: "phone_number_verified", Value: "false" },
           ],
           Enabled: true,
           Password: "pwd",
@@ -779,6 +787,7 @@ describe("SignUp target", () => {
           Attributes: [
             { Name: "sub", Value: expect.stringMatching(UUID) },
             { Name: "email", Value: "example@example.com" },
+            { Name: "email_verified", Value: "false" },
           ],
           Enabled: true,
           Password: "pwd",
@@ -865,6 +874,7 @@ describe("SignUp target", () => {
       Attributes: [
         { Name: "sub", Value: expect.stringMatching(UUID) },
         { Name: "email", Value: "example@example.com" },
+        { Name: "email_verified", Value: "false" },
       ],
       ConfirmationCode: "123456",
       Enabled: true,

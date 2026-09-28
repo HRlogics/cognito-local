@@ -203,10 +203,24 @@ export const SignUp =
       }
     }
 
+    // AWS records contact attributes as unverified until something verifies them
+    const unverifiedDefaults = (
+      [
+        ["email", "email_verified"],
+        ["phone_number", "phone_number_verified"],
+      ] as const
+    )
+      .filter(
+        ([attr, verified]) =>
+          attributesInclude(attr, attributes) &&
+          !attributesInclude(verified, attributes),
+      )
+      .map(([, verified]) => ({ Name: verified, Value: "false" }));
+
     const now = clock.get();
 
     const updatedUser: User = {
-      Attributes: attributes,
+      Attributes: [...attributes, ...unverifiedDefaults],
       Enabled: true,
       Password: req.Password,
       RefreshTokens: [],

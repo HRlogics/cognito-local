@@ -234,6 +234,32 @@ describe("JwtTokenGenerator", () => {
     });
   });
 
+  it.each([
+    ["true", true],
+    ["false", false],
+  ])(
+    "maps email_verified=%s to %s in the id token",
+    async (value, expected) => {
+      const tokens = await tokenGenerator.generate(
+        TestContext,
+        TDB.user({
+          Attributes: [
+            { Name: "email", Value: "a@example.com" },
+            { Name: "email_verified", Value: value },
+          ],
+        }),
+        [],
+        TDB.appClient(),
+        undefined,
+        "Authentication",
+      );
+
+      expect(jwt.decode(tokens.IdToken)).toMatchObject({
+        email_verified: expected,
+      });
+    },
+  );
+
   describe("expiration configuration", () => {
     describe("no token validity configured", () => {
       it("generates default expiration times", async () => {

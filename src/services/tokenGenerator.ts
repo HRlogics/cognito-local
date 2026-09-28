@@ -203,9 +203,9 @@ export class JwtTokenGenerator implements TokenGenerator {
       "cognito:username": user.Username,
       auth_time: authTime,
       email: attributeValue("email", user.Attributes),
-      email_verified: Boolean(
-        attributeValue("email_verified", user.Attributes) ?? false,
-      ),
+      // attribute values are strings, and Boolean("false") is true
+      email_verified:
+        attributeValue("email_verified", user.Attributes) === "true",
       event_id: eventId,
       iat: authTime,
       jti: uuid.v4(),
