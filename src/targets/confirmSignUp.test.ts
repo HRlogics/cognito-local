@@ -5,7 +5,11 @@ import { newMockTriggers } from "../__tests__/mockTriggers";
 import { newMockUserPoolService } from "../__tests__/mockUserPoolService";
 import { TestContext } from "../__tests__/testContext";
 import * as TDB from "../__tests__/testDataBuilder";
-import { CodeMismatchError, NotAuthorizedError } from "../errors";
+import {
+  CodeMismatchError,
+  INVALID_VERIFICATION_CODE,
+  NotAuthorizedError,
+} from "../errors";
 import type { Triggers, UserPoolService } from "../services";
 import { attribute, attributesAppend } from "../services/userPoolService";
 import { ConfirmSignUp, type ConfirmSignUpTarget } from "./confirmSignUp";
@@ -57,7 +61,7 @@ describe("ConfirmSignUp target", () => {
         Username: user.Username,
         ConfirmationCode: "123456",
       }),
-    ).rejects.toBeInstanceOf(CodeMismatchError);
+    ).rejects.toEqual(new CodeMismatchError(INVALID_VERIFICATION_CODE));
   });
 
   describe("when code matches", () => {

@@ -2,7 +2,11 @@ import type {
   ConfirmForgotPasswordRequest,
   ConfirmForgotPasswordResponse,
 } from "aws-sdk/clients/cognitoidentityserviceprovider";
-import { CodeMismatchError, UserNotFoundError } from "../errors";
+import {
+  CodeMismatchError,
+  INVALID_VERIFICATION_CODE,
+  UserNotFoundError,
+} from "../errors";
 import type { Services } from "../services";
 import { attribute, attributesAppend } from "../services/userPoolService";
 import type { Target } from "./Target";
@@ -31,12 +35,7 @@ export const ConfirmForgotPassword =
     }
 
     if (user.ConfirmationCode !== req.ConfirmationCode) {
-      // Real Cognito returns this exact phrasing for ConfirmForgotPassword
-      // (and ConfirmSignUp / VerifyUserAttribute) on a wrong code; clients
-      // assert against it, so we override the default CodeMismatchError text.
-      throw new CodeMismatchError(
-        "Invalid verification code provided, please try again.",
-      );
+      throw new CodeMismatchError(INVALID_VERIFICATION_CODE);
     }
 
     const updatedUser = {

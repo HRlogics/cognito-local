@@ -6,6 +6,7 @@ import {
   AliasExistsError,
   CodeMismatchError,
   ExpiredCodeError,
+  INVALID_VERIFICATION_CODE,
   NotAuthorizedError,
 } from "../errors";
 import type { Services } from "../services";
@@ -40,7 +41,7 @@ export const ConfirmSignUp =
     }
 
     if (user.ConfirmationCode !== req.ConfirmationCode) {
-      throw new CodeMismatchError();
+      throw new CodeMismatchError(INVALID_VERIFICATION_CODE);
     }
 
     // the code went to this attribute (same choice as SignUp), so confirming proves it

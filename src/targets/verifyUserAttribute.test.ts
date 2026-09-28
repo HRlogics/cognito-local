@@ -8,6 +8,7 @@ import { TestContext } from "../__tests__/testContext";
 import * as TDB from "../__tests__/testDataBuilder";
 import {
   CodeMismatchError,
+  INVALID_VERIFICATION_CODE,
   InvalidParameterError,
   NotAuthorizedError,
 } from "../errors";
@@ -188,6 +189,6 @@ describe("VerifyUserAttribute target", () => {
         AttributeName: "email",
         Code: "123456",
       }),
-    ).rejects.toEqual(new CodeMismatchError());
+    ).rejects.toEqual(new CodeMismatchError(INVALID_VERIFICATION_CODE));
   });
 });
