@@ -344,6 +344,10 @@ export class CognitoServiceImpl implements CognitoService {
       throw new NotInitializedError();
     }
 
+    // AWS deletes a pool's app clients with the pool
+    for (const appClient of await this.listAppClients(ctx, userPool.Id)) {
+      await this.clients.delete(ctx, ["Clients", appClient.ClientId]);
+    }
     await fs.rm(path.join(this.dataDirectory, `${userPool.Id}.json`));
     this.userPools = this.userPools.filter((x) => x.options.Id !== userPool.Id);
   }

@@ -115,4 +115,24 @@ describe("Cognito Service", () => {
 
     expect(fs.existsSync(`${dataDirectory}/test-pool-2.json`)).not.toBe(true);
   });
+
+  it("deletes a user pool's app clients with the pool", async () => {
+    const cognitoService = await factory.create(TestContext, {});
+
+    const up = await cognitoService.createUserPool(TestContext, {
+      Id: "test-pool",
+    });
+    const userPool = await cognitoService.getUserPool(TestContext, up.Id);
+    await userPool.saveAppClient(TestContext, {
+      ClientId: "pinned",
+      ClientName: "pinned",
+      UserPoolId: up.Id,
+      CreationDate: new Date(),
+      LastModifiedDate: new Date(),
+    });
+
+    await cognitoService.deleteUserPool(TestContext, up);
+
+    expect(await cognitoService.getAppClient(TestContext, "pinned")).toBeNull();
+  });
 });

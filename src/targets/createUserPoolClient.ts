@@ -26,15 +26,8 @@ export const CreateUserPoolClient =
     const pinned = userPool.options._pinnedClientId;
     const clientId =
       pinned === "use-name" ? req.ClientName : (pinned ?? newId());
-    if (pinned) {
-      // a client left behind by a deleted pool may be replaced, a live one may not
-      const existing = await cognito.getAppClient(ctx, clientId);
-      const pools = existing ? await cognito.listUserPools(ctx) : [];
-      if (pools.some((p) => p.Id === existing?.UserPoolId)) {
-        throw new InvalidParameterError(
-          `App Client ${clientId} already exists`,
-        );
-      }
+    if (pinned && (await cognito.getAppClient(ctx, clientId))) {
+      throw new InvalidParameterError(`App Client ${clientId} already exists`);
     }
 
     const appClient: AppClient = {

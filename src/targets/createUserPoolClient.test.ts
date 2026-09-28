@@ -44,16 +44,13 @@ describe("CreateUserPoolClient target", () => {
     expect(result.UserPoolClient?.ClientId).toEqual(expected);
   });
 
-  it("rejects a pinned client id that a live pool already uses", async () => {
+  it("rejects a pinned client id that already exists", async () => {
     mockCognitoService.getUserPool.mockResolvedValue(
       newMockUserPoolService({ Id: "userPoolId", _pinnedClientId: "fixed-id" }),
     );
     mockCognitoService.getAppClient.mockResolvedValue(
       TDB.appClient({ ClientId: "fixed-id", UserPoolId: "userPoolId" }),
     );
-    mockCognitoService.listUserPools.mockResolvedValue([
-      TDB.userPool({ Id: "userPoolId" }),
-    ]);
 
     await expect(
       createUserPoolClient(TestContext, {
