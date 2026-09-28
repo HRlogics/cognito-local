@@ -2,13 +2,14 @@ import { beforeEach, describe, expect, it, type MockedObject } from "vitest";
 import { ClockFake } from "../__tests__/clockFake";
 import { newMockCognitoService } from "../__tests__/mockCognitoService";
 import { newMockMessages } from "../__tests__/mockMessages";
+import { newMockTriggers } from "../__tests__/mockTriggers";
 import { newMockUserPoolService } from "../__tests__/mockUserPoolService";
 import { UUID } from "../__tests__/patterns";
 import { TestContext } from "../__tests__/testContext";
 import * as TDB from "../__tests__/testDataBuilder";
 import { InvalidParameterError, UsernameExistsError } from "../errors";
 import { type Config, DefaultConfig } from "../server/config";
-import type { Messages, UserPoolService } from "../services";
+import type { Messages, Triggers, UserPoolService } from "../services";
 import { AdminCreateUser, type AdminCreateUserTarget } from "./adminCreateUser";
 
 const originalDate = new Date();
@@ -17,17 +18,92 @@ describe("AdminCreateUser target", () => {
   let adminCreateUser: AdminCreateUserTarget;
   let mockUserPoolService: MockedObject<UserPoolService>;
   let mockMessages: MockedObject<Messages>;
+  let mockTriggers: MockedObject<Triggers>;
   let config: Config;
 
   beforeEach(() => {
     mockUserPoolService = newMockUserPoolService();
     mockMessages = newMockMessages();
+    mockTriggers = newMockTriggers();
     config = DefaultConfig;
     adminCreateUser = AdminCreateUser({
       cognito: newMockCognitoService(mockUserPoolService),
       clock: new ClockFake(originalDate),
       config,
       messages: mockMessages,
+      triggers: mockTriggers,
+    });
+  });
+
+  describe("when PreSignUp trigger is enabled", () => {
+    beforeEach(() => {
+      mockTriggers.enabled.mockImplementation(
+        (trigger) => trigger === "PreSignUp",
+      );
+    });
+
+    it("invokes it with the AdminCreateUser source and ValidationData", async () => {
+      mockTriggers.preSignUp.mockResolvedValue({
+        autoConfirmUser: false,
+        autoVerifyEmail: false,
+        autoVerifyPhone: false,
+      });
+
+      await adminCreateUser(TestContext, {
+        ClientMetadata: { client: "metadata" },
+        MessageAction: "SUPPRESS",
+        TemporaryPassword: "pwd",
+        UserAttributes: [{ Name: "email", Value: "example@example.com" }],
+        Username: "user-supplied",
+        UserPoolId: "test",
+        ValidationData: [{ Name: "invite", Value: "abc" }],
+      });
+
+      expect(mockTriggers.preSignUp).toHaveBeenCalledWith(TestContext, {
+        clientId: "CLIENT_ID_NOT_APPLICABLE",
+        clientMetadata: { client: "metadata" },
+        source: "PreSignUp_AdminCreateUser",
+        userAttributes: [
+          { Name: "sub", Value: expect.stringMatching(UUID) },
+          { Name: "email", Value: "example@example.com" },
+        ],
+        username: "user-supplied",
+        userPoolId: "test",
+        validationData: { invite: "abc" },
+      });
+    });
+
+    it("applies autoVerify flags but keeps FORCE_CHANGE_PASSWORD", async () => {
+      mockTriggers.preSignUp.mockResolvedValue({
+        autoConfirmUser: true,
+        autoVerifyEmail: true,
+        autoVerifyPhone: true,
+      });
+
+      await adminCreateUser(TestContext, {
+        TemporaryPassword: "pwd",
+        UserAttributes: [
+          { Name: "email", Value: "example@example.com" },
+          { Name: "email_verified", Value: "false" },
+          { Name: "phone_number", Value: "+61400000000" },
+        ],
+        Username: "user-supplied",
+        UserPoolId: "test",
+      });
+
+      expect(mockUserPoolService.saveUser).toHaveBeenCalledWith(
+        TestContext,
+        expect.objectContaining({
+          Attributes: [
+            { Name: "email", Value: "example@example.com" },
+            { Name: "email_verified", Value: "true" },
+            { Name: "phone_number", Value: "+61400000000" },
+            { Name: "phone_number_verified", Value: "true" },
+            { Name: "sub", Value: expect.stringMatching(UUID) },
+          ],
+          UserStatus: "FORCE_CHANGE_PASSWORD",
+        }),
+      );
     });
   });
 
