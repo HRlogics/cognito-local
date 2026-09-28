@@ -17,7 +17,7 @@ export const UpdateResourceServer =
   ({ cognito }: UpdateResourceServerServices): UpdateResourceServerTarget =>
   async (ctx, req) => {
     const userPool = await cognito.getUserPool(ctx, req.UserPoolId);
-    const servers: any[] = (userPool.options as any)._resourceServers ?? [];
+    const servers = userPool.options._resourceServers ?? [];
 
     const index = servers.findIndex((s) => s.Identifier === req.Identifier);
     if (index === -1) {
@@ -27,7 +27,7 @@ export const UpdateResourceServer =
     const updated = {
       ...servers[index],
       Name: req.Name,
-      Scopes: req.Scopes as any,
+      Scopes: req.Scopes,
     };
 
     servers[index] = updated;
@@ -35,7 +35,7 @@ export const UpdateResourceServer =
     await userPool.updateOptions(ctx, {
       ...userPool.options,
       _resourceServers: servers,
-    } as any);
+    });
 
     return {
       ResourceServer: updated,

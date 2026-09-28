@@ -7,9 +7,9 @@ import type { Target } from "./Target";
 
 interface CompleteWebAuthnRegistrationRequest {
   AccessToken: string;
-  Credential?: any;
+  Credential?: { friendlyName?: string };
 }
-type CompleteWebAuthnRegistrationResponse = {};
+type CompleteWebAuthnRegistrationResponse = Record<string, never>;
 
 export type CompleteWebAuthnRegistrationTarget = Target<
   CompleteWebAuthnRegistrationRequest,
@@ -36,7 +36,7 @@ export const CompleteWebAuthnRegistration =
       throw new UserNotFoundError();
     }
 
-    const credentials = ((user as any)._webauthnCredentials as any[]) ?? [];
+    const credentials = user._webauthnCredentials ?? [];
     credentials.push({
       CredentialId: uuid.v4(),
       FriendlyCredentialName: req.Credential?.friendlyName,
@@ -50,7 +50,7 @@ export const CompleteWebAuthnRegistration =
       ...user,
       _webauthnCredentials: credentials,
       UserLastModifiedDate: clock.get(),
-    } as any);
+    });
 
     return {};
   };

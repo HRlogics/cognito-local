@@ -7,7 +7,7 @@ interface DeleteUserPoolClientSecretRequest {
   ClientId: string;
   SecretId?: string;
 }
-type DeleteUserPoolClientSecretResponse = {};
+type DeleteUserPoolClientSecretResponse = Record<string, never>;
 
 export type DeleteUserPoolClientSecretTarget = Target<
   DeleteUserPoolClientSecretRequest,

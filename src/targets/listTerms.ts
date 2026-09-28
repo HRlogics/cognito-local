@@ -1,5 +1,6 @@
 import type { Services } from "../services";
 import { paginate } from "../services/pagination";
+import type { Terms } from "../services/userPoolService";
 import type { Target } from "./Target";
 
 interface ListTermsRequest {
@@ -8,7 +9,7 @@ interface ListTermsRequest {
   MaxResults?: number;
 }
 interface ListTermsResponse {
-  Terms?: any[];
+  Terms?: Terms[];
   NextToken?: string;
 }
 
@@ -18,7 +19,7 @@ export const ListTerms =
   ({ cognito }: Pick<Services, "cognito">): ListTermsTarget =>
   async (ctx, req) => {
     const userPool = await cognito.getUserPool(ctx, req.UserPoolId);
-    const items = ((userPool.options as any)._terms as any[]) ?? [];
+    const items = userPool.options._terms ?? [];
 
     const { items: page, nextToken } = paginate(
       items,

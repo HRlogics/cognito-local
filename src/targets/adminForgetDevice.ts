@@ -3,7 +3,10 @@ import { ResourceNotFoundError, UserNotFoundError } from "../errors";
 import type { Services } from "../services";
 import type { Target } from "./Target";
 
-export type AdminForgetDeviceTarget = Target<AdminForgetDeviceRequest, {}>;
+export type AdminForgetDeviceTarget = Target<
+  AdminForgetDeviceRequest,
+  Record<string, never>
+>;
 
 type AdminForgetDeviceServices = Pick<Services, "cognito" | "clock">;
 

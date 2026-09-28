@@ -9,7 +9,7 @@ interface StartWebAuthnRegistrationRequest {
   AccessToken: string;
 }
 interface StartWebAuthnRegistrationResponse {
-  CredentialCreationOptions?: any;
+  CredentialCreationOptions?: unknown;
 }
 
 export type StartWebAuthnRegistrationTarget = Target<

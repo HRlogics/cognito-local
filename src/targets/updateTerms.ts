@@ -1,5 +1,6 @@
 import { ResourceNotFoundError } from "../errors";
 import type { Services } from "../services";
+import type { Terms } from "../services/userPoolService";
 import type { Target } from "./Target";
 
 interface UpdateTermsRequest {
@@ -8,7 +9,7 @@ interface UpdateTermsRequest {
   TermsText?: string;
 }
 interface UpdateTermsResponse {
-  Terms?: any;
+  Terms?: Terms;
 }
 
 export type UpdateTermsTarget = Target<UpdateTermsRequest, UpdateTermsResponse>;
@@ -20,8 +21,8 @@ export const UpdateTerms =
   }: Pick<Services, "cognito" | "clock">): UpdateTermsTarget =>
   async (ctx, req) => {
     const userPool = await cognito.getUserPool(ctx, req.UserPoolId);
-    const items = ((userPool.options as any)._terms as any[]) ?? [];
-    const idx = items.findIndex((t: any) => t.TermsId === req.TermsId);
+    const items = userPool.options._terms ?? [];
+    const idx = items.findIndex((t) => t.TermsId === req.TermsId);
     if (idx < 0) {
       throw new ResourceNotFoundError("Terms not found");
     }
@@ -35,7 +36,7 @@ export const UpdateTerms =
     await userPool.updateOptions(ctx, {
       ...userPool.options,
       _terms: items,
-    } as any);
+    });
 
     return { Terms: items[idx] };
   };

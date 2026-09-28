@@ -14,7 +14,7 @@ export const DescribeRiskConfiguration =
   ({ cognito }: Pick<Services, "cognito">): DescribeRiskConfigurationTarget =>
   async (ctx, req) => {
     const userPool = await cognito.getUserPool(ctx, req.UserPoolId);
-    const riskConfiguration = (userPool.options as any)._riskConfiguration ?? {
+    const riskConfiguration = userPool.options._riskConfiguration ?? {
       UserPoolId: req.UserPoolId,
       ClientId: req.ClientId,
     };

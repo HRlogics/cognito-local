@@ -54,7 +54,7 @@ export class SmtpMessageSender implements MessageSender {
 
   public async sendSms(
     ctx: Context,
-    user: User,
+    _user: User,
     destination: string,
     message: Message,
   ): Promise<void> {

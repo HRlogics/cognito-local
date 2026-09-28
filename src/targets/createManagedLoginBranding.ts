@@ -1,15 +1,16 @@
 import * as uuid from "uuid";
 import type { Services } from "../services";
+import type { ManagedLoginBranding } from "../services/userPoolService";
 import type { Target } from "./Target";
 
 interface CreateManagedLoginBrandingRequest {
   UserPoolId: string;
   ClientId?: string;
-  Settings?: any;
-  Assets?: any[];
+  Settings?: unknown;
+  Assets?: unknown[];
 }
 interface CreateManagedLoginBrandingResponse {
-  ManagedLoginBranding?: any;
+  ManagedLoginBranding?: ManagedLoginBranding;
 }
 
 export type CreateManagedLoginBrandingTarget = Target<
@@ -36,14 +37,13 @@ export const CreateManagedLoginBranding =
       LastModifiedDate: now,
     };
 
-    const existing =
-      ((userPool.options as any)._managedLoginBranding as any[]) ?? [];
+    const existing = userPool.options._managedLoginBranding ?? [];
     existing.push(branding);
 
     await userPool.updateOptions(ctx, {
       ...userPool.options,
       _managedLoginBranding: existing,
-    } as any);
+    });
 
     return { ManagedLoginBranding: branding };
   };

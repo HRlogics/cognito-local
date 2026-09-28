@@ -377,7 +377,7 @@ export function attachOAuth2Routes(
     const userPool = await services.cognito.getUserPool(ctx, userPoolId);
     const user = await userPool.getUserByUsername(
       ctx,
-      decoded["username"] ?? decoded.sub ?? "",
+      decoded.username ?? decoded.sub ?? "",
     );
     if (!user) {
       return res.status(404).json({ error: "user_not_found" });

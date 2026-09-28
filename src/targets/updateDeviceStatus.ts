@@ -46,7 +46,7 @@ export const UpdateDeviceStatus =
     if (req.DeviceRememberedStatus) {
       device.DeviceAttributes = device.DeviceAttributes ?? [];
       const existing = device.DeviceAttributes.find(
-        (a: any) => a.Name === "device_status",
+        (a) => a.Name === "device_status",
       );
       if (existing) {
         existing.Value = req.DeviceRememberedStatus;

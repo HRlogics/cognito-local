@@ -1,5 +1,6 @@
 import * as uuid from "uuid";
 import type { Services } from "../services";
+import type { Terms } from "../services/userPoolService";
 import type { Target } from "./Target";
 
 interface CreateTermsRequest {
@@ -8,7 +9,7 @@ interface CreateTermsRequest {
   Version?: string;
 }
 interface CreateTermsResponse {
-  Terms?: any;
+  Terms?: Terms;
 }
 
 export type CreateTermsTarget = Target<CreateTermsRequest, CreateTermsResponse>;
@@ -31,13 +32,13 @@ export const CreateTerms =
       LastModifiedDate: now,
     };
 
-    const existing = ((userPool.options as any)._terms as any[]) ?? [];
+    const existing = userPool.options._terms ?? [];
     existing.push(terms);
 
     await userPool.updateOptions(ctx, {
       ...userPool.options,
       _terms: existing,
-    } as any);
+    });
 
     return { Terms: terms };
   };

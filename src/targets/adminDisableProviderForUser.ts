@@ -11,6 +11,8 @@ import {
 } from "../services/userPoolService";
 import type { Target } from "./Target";
 
+type Identity = { providerName?: string; userId?: string };
+
 export type AdminDisableProviderForUserTarget = Target<
   AdminDisableProviderForUserRequest,
   AdminDisableProviderForUserResponse
@@ -37,7 +39,7 @@ export const AdminDisableProviderForUser =
       try {
         const identities = JSON.parse(identitiesStr);
         return identities.some(
-          (id: any) =>
+          (id: Identity) =>
             id.providerName === providerName && id.userId === providerValue,
         );
       } catch {
@@ -52,7 +54,7 @@ export const AdminDisableProviderForUser =
     const identitiesStr = attributeValue("identities", user.Attributes) ?? "[]";
     const identities = JSON.parse(identitiesStr);
     const filtered = identities.filter(
-      (id: any) =>
+      (id: Identity) =>
         !(id.providerName === providerName && id.userId === providerValue),
     );
 

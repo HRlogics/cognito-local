@@ -6,7 +6,7 @@ interface DeleteManagedLoginBrandingRequest {
   UserPoolId: string;
   ManagedLoginBrandingId: string;
 }
-type DeleteManagedLoginBrandingResponse = {};
+type DeleteManagedLoginBrandingResponse = Record<string, never>;
 
 export type DeleteManagedLoginBrandingTarget = Target<
   DeleteManagedLoginBrandingRequest,
@@ -17,10 +17,9 @@ export const DeleteManagedLoginBranding =
   ({ cognito }: Pick<Services, "cognito">): DeleteManagedLoginBrandingTarget =>
   async (ctx, req) => {
     const userPool = await cognito.getUserPool(ctx, req.UserPoolId);
-    const items =
-      ((userPool.options as any)._managedLoginBranding as any[]) ?? [];
+    const items = userPool.options._managedLoginBranding ?? [];
     const idx = items.findIndex(
-      (b: any) => b.ManagedLoginBrandingId === req.ManagedLoginBrandingId,
+      (b) => b.ManagedLoginBrandingId === req.ManagedLoginBrandingId,
     );
     if (idx < 0) {
       throw new ResourceNotFoundError("Managed login branding not found");
@@ -31,7 +30,7 @@ export const DeleteManagedLoginBranding =
     await userPool.updateOptions(ctx, {
       ...userPool.options,
       _managedLoginBranding: items,
-    } as any);
+    });
 
     return {};
   };

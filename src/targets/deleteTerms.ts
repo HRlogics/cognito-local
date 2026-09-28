@@ -6,7 +6,7 @@ interface DeleteTermsRequest {
   UserPoolId: string;
   TermsId: string;
 }
-type DeleteTermsResponse = {};
+type DeleteTermsResponse = Record<string, never>;
 
 export type DeleteTermsTarget = Target<DeleteTermsRequest, DeleteTermsResponse>;
 
@@ -14,8 +14,8 @@ export const DeleteTerms =
   ({ cognito }: Pick<Services, "cognito">): DeleteTermsTarget =>
   async (ctx, req) => {
     const userPool = await cognito.getUserPool(ctx, req.UserPoolId);
-    const items = ((userPool.options as any)._terms as any[]) ?? [];
-    const idx = items.findIndex((t: any) => t.TermsId === req.TermsId);
+    const items = userPool.options._terms ?? [];
+    const idx = items.findIndex((t) => t.TermsId === req.TermsId);
     if (idx < 0) {
       throw new ResourceNotFoundError("Terms not found");
     }
@@ -25,7 +25,7 @@ export const DeleteTerms =
     await userPool.updateOptions(ctx, {
       ...userPool.options,
       _terms: items,
-    } as any);
+    });
 
     return {};
   };

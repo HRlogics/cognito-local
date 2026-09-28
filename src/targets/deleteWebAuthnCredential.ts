@@ -12,7 +12,7 @@ interface DeleteWebAuthnCredentialRequest {
   AccessToken: string;
   CredentialId: string;
 }
-type DeleteWebAuthnCredentialResponse = {};
+type DeleteWebAuthnCredentialResponse = Record<string, never>;
 
 export type DeleteWebAuthnCredentialTarget = Target<
   DeleteWebAuthnCredentialRequest,
@@ -39,9 +39,9 @@ export const DeleteWebAuthnCredential =
       throw new UserNotFoundError();
     }
 
-    const credentials = ((user as any)._webauthnCredentials as any[]) ?? [];
+    const credentials = user._webauthnCredentials ?? [];
     const idx = credentials.findIndex(
-      (c: any) => c.CredentialId === req.CredentialId,
+      (c) => c.CredentialId === req.CredentialId,
     );
     if (idx < 0) {
       throw new ResourceNotFoundError("Credential not found");
@@ -53,7 +53,7 @@ export const DeleteWebAuthnCredential =
       ...user,
       _webauthnCredentials: credentials,
       UserLastModifiedDate: clock.get(),
-    } as any);
+    });
 
     return {};
   };

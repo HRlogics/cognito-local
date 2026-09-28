@@ -5,11 +5,7 @@ import type {
 } from "aws-sdk/clients/cognitoidentityserviceprovider";
 import { createTranslator } from "short-uuid";
 import * as uuid from "uuid";
-import {
-  InvalidParameterError,
-  UnsupportedError,
-  UsernameExistsError,
-} from "../errors";
+import { InvalidParameterError, UsernameExistsError } from "../errors";
 import type { Messages, Services, UserPoolService } from "../services";
 import type { Context } from "../services/context";
 import type { DeliveryDetails } from "../services/messageDelivery/messageDelivery";

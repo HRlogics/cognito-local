@@ -17,7 +17,7 @@ export const ListIdentityProviders =
   ({ cognito }: ListIdentityProvidersServices): ListIdentityProvidersTarget =>
   async (ctx, req) => {
     const userPool = await cognito.getUserPool(ctx, req.UserPoolId);
-    const providers: any[] = (userPool.options as any)._identityProviders ?? [];
+    const providers = userPool.options._identityProviders ?? [];
 
     const { items, nextToken } = paginate(
       providers,

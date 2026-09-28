@@ -9,7 +9,10 @@ import type { Services } from "../services";
 import type { Token } from "../services/tokenGenerator";
 import type { Target } from "./Target";
 
-export type ForgetDeviceTarget = Target<ForgetDeviceRequest, {}>;
+export type ForgetDeviceTarget = Target<
+  ForgetDeviceRequest,
+  Record<string, never>
+>;
 
 type ForgetDeviceServices = Pick<Services, "cognito" | "clock">;
 
