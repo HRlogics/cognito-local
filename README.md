@@ -2,7 +2,7 @@
 
 **122 SDK targets + 7 OAuth2/OIDC endpoints = 100% AWS Cognito User Pool API coverage**
 
-`Build: passing` | `Tests: 721 passing` | `License: MIT` | `Node >= 22`
+`Build: passing` | `Tests: 721 passing` | `License: MIT` | `Node >= 24.21`
 
 A local Amazon Cognito User Pool emulator for development and testing. Drop-in replacement for the real service -- point your SDK at `http://localhost:9229` and go.
 
