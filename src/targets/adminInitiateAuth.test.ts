@@ -5,7 +5,11 @@ import { newMockTriggers } from "../__tests__/mockTriggers";
 import { newMockUserPoolService } from "../__tests__/mockUserPoolService";
 import { TestContext } from "../__tests__/testContext";
 import * as TDB from "../__tests__/testDataBuilder";
-import { NotAuthorizedError, UserNotFoundError } from "../errors";
+import {
+  NotAuthorizedError,
+  PasswordResetRequiredError,
+  UserNotFoundError,
+} from "../errors";
 import type { CognitoService, Triggers, UserPoolService } from "../services";
 import type { TokenGenerator } from "../services/tokenGenerator";
 import {
@@ -35,6 +39,53 @@ describe("AdminInitiateAuth target", () => {
       cognito: mockCognitoService,
       tokenGenerator: mockTokenGenerator,
     });
+  });
+
+  describe("when user status is FORCE_CHANGE_PASSWORD", () => {
+    const user = TDB.user({ UserStatus: "FORCE_CHANGE_PASSWORD" });
+
+    beforeEach(() => {
+      mockUserPoolService.getUserByUsername.mockResolvedValue(user);
+    });
+
+    it("responds with a NEW_PASSWORD_REQUIRED challenge instead of tokens", async () => {
+      const response = await adminInitiateAuth(TestContext, {
+        AuthFlow: "ADMIN_USER_PASSWORD_AUTH",
+        ClientId: userPoolClient.ClientId,
+        UserPoolId: userPoolClient.UserPoolId,
+        AuthParameters: { USERNAME: user.Username, PASSWORD: user.Password },
+      });
+
+      expect(response.ChallengeName).toEqual("NEW_PASSWORD_REQUIRED");
+      expect(response.Session).toEqual(expect.any(String));
+      expect(response.AuthenticationResult).toBeUndefined();
+      expect(mockTokenGenerator.generate).not.toHaveBeenCalled();
+    });
+
+    it("rejects a wrong temporary password", async () => {
+      await expect(
+        adminInitiateAuth(TestContext, {
+          AuthFlow: "ADMIN_USER_PASSWORD_AUTH",
+          ClientId: userPoolClient.ClientId,
+          UserPoolId: userPoolClient.UserPoolId,
+          AuthParameters: { USERNAME: user.Username, PASSWORD: "bad" },
+        }),
+      ).rejects.toBeInstanceOf(NotAuthorizedError);
+    });
+  });
+
+  it("throws PasswordResetRequiredException for a RESET_REQUIRED user", async () => {
+    const user = TDB.user({ UserStatus: "RESET_REQUIRED" });
+    mockUserPoolService.getUserByUsername.mockResolvedValue(user);
+
+    await expect(
+      adminInitiateAuth(TestContext, {
+        AuthFlow: "ADMIN_USER_PASSWORD_AUTH",
+        ClientId: userPoolClient.ClientId,
+        UserPoolId: userPoolClient.UserPoolId,
+        AuthParameters: { USERNAME: user.Username, PASSWORD: user.Password },
+      }),
+    ).rejects.toBeInstanceOf(PasswordResetRequiredError);
   });
 
   it("create tokens with username, password and admin user password auth flow", async () => {

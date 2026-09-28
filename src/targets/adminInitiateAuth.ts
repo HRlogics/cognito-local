@@ -6,12 +6,14 @@ import { v4 } from "uuid";
 import {
   InvalidParameterError,
   NotAuthorizedError,
+  PasswordResetRequiredError,
   UnsupportedError,
   UserNotConfirmedException,
   unknownUserError,
 } from "../errors";
 import type { Services } from "../services";
 import type { Context } from "../services/context";
+import { attributesToRecord } from "../services/userPoolService";
 import type { Target } from "./Target";
 
 export type AdminInitiateAuthTarget = Target<
@@ -75,8 +77,22 @@ const adminUserPasswordAuthFlow = async (
     throw new NotAuthorizedError("User is disabled.");
   }
 
+  if (user.UserStatus === "RESET_REQUIRED") {
+    throw new PasswordResetRequiredError();
+  }
   if (user.Password !== req.AuthParameters.PASSWORD) {
     throw new NotAuthorizedError("Incorrect username or password.");
+  }
+  if (user.UserStatus === "FORCE_CHANGE_PASSWORD") {
+    return {
+      ChallengeName: "NEW_PASSWORD_REQUIRED",
+      ChallengeParameters: {
+        USER_ID_FOR_SRP: user.Username,
+        requiredAttributes: JSON.stringify([]),
+        userAttributes: JSON.stringify(attributesToRecord(user.Attributes)),
+      },
+      Session: v4(),
+    };
   }
 
   if (user.UserStatus === "UNCONFIRMED") {

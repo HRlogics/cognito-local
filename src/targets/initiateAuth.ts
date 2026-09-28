@@ -245,11 +245,12 @@ const userPasswordAuthFlow = async (
   if (user.UserStatus === "RESET_REQUIRED") {
     throw new PasswordResetRequiredError();
   }
-  if (user.UserStatus === "FORCE_CHANGE_PASSWORD") {
-    return newPasswordChallenge(user);
-  }
+  // a wrong temporary password must fail, not open the new-password challenge
   if (user.Password !== req.AuthParameters.PASSWORD) {
     throw new NotAuthorizedError("Incorrect username or password.");
+  }
+  if (user.UserStatus === "FORCE_CHANGE_PASSWORD") {
+    return newPasswordChallenge(user);
   }
   if (user.UserStatus === "UNCONFIRMED") {
     throw new UserNotConfirmedException();

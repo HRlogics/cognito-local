@@ -667,7 +667,7 @@ describe("InitiateAuth target", () => {
           AuthFlow: "USER_PASSWORD_AUTH",
           AuthParameters: {
             USERNAME: user.Username,
-            PASSWORD: "bad-password",
+            PASSWORD: user.Password,
           },
         });
 
@@ -680,6 +680,21 @@ describe("InitiateAuth target", () => {
           },
           Session: expect.stringMatching(UUID),
         });
+      });
+
+      it("rejects a wrong temporary password", async () => {
+        await expect(
+          initiateAuth(TestContext, {
+            ClientId: userPoolClient.ClientId,
+            AuthFlow: "USER_PASSWORD_AUTH",
+            AuthParameters: {
+              USERNAME: user.Username,
+              PASSWORD: "bad-password",
+            },
+          }),
+        ).rejects.toEqual(
+          new NotAuthorizedError("Incorrect username or password."),
+        );
       });
 
       describe("when Post Authentication trigger is enabled", () => {

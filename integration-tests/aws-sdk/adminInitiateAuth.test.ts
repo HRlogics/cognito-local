@@ -115,6 +115,14 @@ describe(
           UserPoolId: userPoolId,
         })
         .promise();
+      await client
+        .adminSetUserPassword({
+          Password: "def",
+          Permanent: true,
+          Username: "abc",
+          UserPoolId: userPoolId,
+        })
+        .promise();
       const userSub = attributeValue(
         "sub",
         createUserResponse.User?.Attributes,
@@ -202,6 +210,14 @@ describe(
             { Name: "email", Value: "example@example.com" },
             { Name: "email_verified", Value: "true" },
           ],
+          Username: "abc",
+          UserPoolId: userPoolId,
+        })
+        .promise();
+      await client
+        .adminSetUserPassword({
+          Password: "def",
+          Permanent: true,
           Username: "abc",
           UserPoolId: userPoolId,
         })
