@@ -32,6 +32,12 @@ describe("AdminRespondToAuthChallenge target", () => {
   beforeEach(() => {
     clock = new ClockFake(currentDate);
     mockTokenGenerator = newMockTokenGenerator();
+    mockTokenGenerator.generate.mockResolvedValue({
+      AccessToken: "access",
+      IdToken: "id",
+      RefreshToken: "refresh",
+      ExpiresIn: 3600,
+    });
     mockTriggers = newMockTriggers();
     mockUserPoolService = newMockUserPoolService({
       Id: userPoolClient.UserPoolId,

@@ -178,17 +178,23 @@ export const AdminRespondToAuthChallenge =
       });
     }
 
-    const userGroups = await userPool.listUserGroupMembership(ctx, user);
+    // the branches above may have saved the user (new password, MFA settings), and
+    // storeRefreshToken writes back the object it gets, so use the stored copy
+    const latestUser =
+      (await userPool.getUserByUsername(ctx, user.Username)) ?? user;
+    const userGroups = await userPool.listUserGroupMembership(ctx, latestUser);
+    const tokens = await tokenGenerator.generate(
+      ctx,
+      latestUser,
+      userGroups,
+      userPoolClient,
+      req.ClientMetadata,
+      "Authentication",
+    );
+    await userPool.storeRefreshToken(ctx, tokens.RefreshToken, latestUser);
 
     return {
       ChallengeParameters: {},
-      AuthenticationResult: await tokenGenerator.generate(
-        ctx,
-        user,
-        userGroups,
-        userPoolClient,
-        req.ClientMetadata,
-        "Authentication",
-      ),
+      AuthenticationResult: tokens,
     };
   };
