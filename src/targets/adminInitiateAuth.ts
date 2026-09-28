@@ -68,6 +68,9 @@ const adminUserPasswordAuthFlow = async (
   if (!user || !userPoolClient) {
     throw new NotAuthorizedError();
   }
+  if (!user.Enabled) {
+    throw new NotAuthorizedError("User is disabled.");
+  }
 
   if (user.Password !== req.AuthParameters.PASSWORD) {
     throw new InvalidPasswordError();
@@ -154,6 +157,9 @@ const refreshTokenAuthFlow = async (
   if (!user || !userPoolClient) {
     throw new NotAuthorizedError();
   }
+  if (!user.Enabled) {
+    throw new NotAuthorizedError("User is disabled.");
+  }
 
   const userGroups = await userPool.listUserGroupMembership(ctx, user);
 
@@ -206,6 +212,9 @@ const customAuthFlow = async (
   );
   if (!user) {
     throw new NotAuthorizedError();
+  }
+  if (!user.Enabled) {
+    throw new NotAuthorizedError("User is disabled.");
   }
 
   const defineResult = await services.triggers.defineAuthChallenge(ctx, {

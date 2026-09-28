@@ -54,6 +54,9 @@ export const AdminRespondToAuthChallenge =
     if (!user || !userPoolClient) {
       throw new NotAuthorizedError();
     }
+    if (!user.Enabled) {
+      throw new NotAuthorizedError("User is disabled.");
+    }
 
     if (req.ChallengeName === "SMS_MFA") {
       if (user.MFACode !== req.ChallengeResponses.SMS_MFA_CODE) {

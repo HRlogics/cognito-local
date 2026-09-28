@@ -109,6 +109,9 @@ export const RespondToAuthChallenge =
     if (!user || !userPoolClient) {
       throw new NotAuthorizedError();
     }
+    if (!user.Enabled) {
+      throw new NotAuthorizedError("User is disabled.");
+    }
 
     if (req.ChallengeName === "SELECT_MFA_TYPE") {
       const answer = req.ChallengeResponses.ANSWER;

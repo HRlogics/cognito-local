@@ -238,6 +238,9 @@ const userPasswordAuthFlow = async (
   if (!user) {
     throw new NotAuthorizedError();
   }
+  if (!user.Enabled) {
+    throw new NotAuthorizedError("User is disabled.");
+  }
   if (user.UserStatus === "RESET_REQUIRED") {
     throw new PasswordResetRequiredError();
   }
@@ -308,6 +311,9 @@ const refreshTokenAuthFlow = async (
   if (!user) {
     throw new NotAuthorizedError();
   }
+  if (!user.Enabled) {
+    throw new NotAuthorizedError("User is disabled.");
+  }
 
   const userGroups = await userPool.listUserGroupMembership(ctx, user);
 
@@ -365,6 +371,9 @@ const userSrpAuthFlow = async (
   if (!user) {
     throw new NotAuthorizedError();
   }
+  if (!user.Enabled) {
+    throw new NotAuthorizedError("User is disabled.");
+  }
 
   if (user.UserStatus === "RESET_REQUIRED") {
     throw new PasswordResetRequiredError();
@@ -416,6 +425,9 @@ const customAuthFlow = async (
   );
   if (!user) {
     throw new NotAuthorizedError();
+  }
+  if (!user.Enabled) {
+    throw new NotAuthorizedError("User is disabled.");
   }
 
   const defineResult = await services.triggers.defineAuthChallenge(ctx, {

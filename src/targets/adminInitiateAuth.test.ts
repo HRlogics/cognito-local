@@ -5,6 +5,7 @@ import { newMockTriggers } from "../__tests__/mockTriggers";
 import { newMockUserPoolService } from "../__tests__/mockUserPoolService";
 import { TestContext } from "../__tests__/testContext";
 import * as TDB from "../__tests__/testDataBuilder";
+import { NotAuthorizedError } from "../errors";
 import type { CognitoService, Triggers, UserPoolService } from "../services";
 import type { TokenGenerator } from "../services/tokenGenerator";
 import {
@@ -195,6 +196,28 @@ describe("AdminInitiateAuth target", () => {
       expect(response.AuthenticationResult?.AccessToken).toEqual("access");
     });
   });
+
+  it.each(["ADMIN_USER_PASSWORD_AUTH", "REFRESH_TOKEN_AUTH"])(
+    "throws if the user is disabled (%s)",
+    async (authFlow) => {
+      const user = TDB.user({ Enabled: false });
+      mockUserPoolService.getUserByUsername.mockResolvedValue(user);
+      mockUserPoolService.getUserByRefreshToken.mockResolvedValue(user);
+
+      await expect(
+        adminInitiateAuth(TestContext, {
+          AuthFlow: authFlow,
+          ClientId: userPoolClient.ClientId,
+          UserPoolId: userPoolClient.UserPoolId,
+          AuthParameters: {
+            USERNAME: user.Username,
+            PASSWORD: user.Password,
+            REFRESH_TOKEN: "refresh token",
+          },
+        }),
+      ).rejects.toEqual(new NotAuthorizedError("User is disabled."));
+    },
+  );
 
   it("supports REFRESH_TOKEN_AUTH", async () => {
     mockTokenGenerator.generate.mockResolvedValue({
