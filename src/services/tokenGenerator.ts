@@ -203,10 +203,13 @@ export class JwtTokenGenerator implements TokenGenerator {
     let idToken: RawToken = {
       "cognito:username": user.Username,
       auth_time: authTime,
-      email: attributeValue("email", user.Attributes),
-      // attribute values are strings, and Boolean("false") is true
-      email_verified:
-        attributeValue("email_verified", user.Attributes) === "true",
+      // Cognito emits email and email_verified only for users that have an email; attribute
+      // values are strings, and Boolean("false") is true
+      ...(attributeValue("email", user.Attributes) && {
+        email: attributeValue("email", user.Attributes),
+        email_verified:
+          attributeValue("email_verified", user.Attributes) === "true",
+      }),
       event_id: eventId,
       iat: authTime,
       jti: randomUUID(),

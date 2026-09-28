@@ -317,6 +317,21 @@ describe("JwtTokenGenerator", () => {
     expect(jwt.decode(tokens.AccessToken)).not.toHaveProperty("given_name");
   });
 
+  it("omits email claims for a user without an email", async () => {
+    const tokens = await tokenGenerator.generate(
+      TestContext,
+      TDB.user({ Attributes: [{ Name: "phone_number", Value: "+15550100" }] }),
+      [],
+      TDB.appClient(),
+      undefined,
+      "Authentication",
+    );
+
+    const idToken = jwt.decode(tokens.IdToken);
+    expect(idToken).not.toHaveProperty("email");
+    expect(idToken).not.toHaveProperty("email_verified");
+  });
+
   describe("expiration configuration", () => {
     describe("no token validity configured", () => {
       it("generates default expiration times", async () => {
