@@ -171,36 +171,37 @@ export interface SrpServerState {
   aHex: string;
 }
 
-// Per-process key signing the opaque SECRET_BLOCK that carries server SRP state
-// across the InitiateAuth -> RespondToAuthChallenge round-trip. Regenerated on
-// restart (in-flight SRP sessions then fail, like real expired Cognito sessions).
+// Per-process key for the opaque SECRET_BLOCK that carries server SRP state across the
+// InitiateAuth -> RespondToAuthChallenge round-trip. The state includes the private ephemeral b,
+// from which a client could recover the verifier (v = (B - g^b) / k) and sign in without the
+// password, so it is encrypted (AES-256-GCM), not just signed. Regenerated on restart: in-flight
+// SRP sessions then fail, like real expired Cognito sessions.
 const SERVER_BLOCK_KEY = crypto.randomBytes(32);
 
 export const encodeSecretBlock = (state: SrpServerState): string => {
-  const payload = JSON.stringify(state);
-  const mac = crypto
-    .createHmac("sha256", SERVER_BLOCK_KEY)
-    .update(payload)
-    .digest("base64url");
-  return Buffer.from(JSON.stringify({ d: payload, m: mac }), "utf8").toString(
-    "base64",
-  );
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv("aes-256-gcm", SERVER_BLOCK_KEY, iv);
+  const data = Buffer.concat([
+    cipher.update(JSON.stringify(state), "utf8"),
+    cipher.final(),
+  ]);
+  return Buffer.concat([iv, cipher.getAuthTag(), data]).toString("base64");
 };
 
 export const decodeSecretBlock = (secretBlockB64: string): SrpServerState => {
-  const wrapper = JSON.parse(
-    Buffer.from(secretBlockB64, "base64").toString("utf8"),
-  ) as { d: string; m: string };
-  const expected = crypto
-    .createHmac("sha256", SERVER_BLOCK_KEY)
-    .update(wrapper.d)
-    .digest("base64url");
-  const a = Buffer.from(wrapper.m);
-  const b = Buffer.from(expected);
-  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
-    throw new Error("Invalid SECRET_BLOCK signature");
-  }
-  return JSON.parse(wrapper.d) as SrpServerState;
+  const raw = Buffer.from(secretBlockB64, "base64");
+  const decipher = crypto.createDecipheriv(
+    "aes-256-gcm",
+    SERVER_BLOCK_KEY,
+    raw.subarray(0, 12),
+  );
+  decipher.setAuthTag(raw.subarray(12, 28));
+  // final() throws when the block was tampered with or issued by another process
+  const json = Buffer.concat([
+    decipher.update(raw.subarray(28)),
+    decipher.final(),
+  ]).toString("utf8");
+  return JSON.parse(json) as SrpServerState;
 };
 
 /** Random server ephemeral b in [1, N), and the matching B != 0 mod N. */

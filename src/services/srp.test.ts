@@ -162,20 +162,30 @@ describe("srp", () => {
     });
 
     it("rejects a tampered block", () => {
+      const raw = Buffer.from(
+        encodeSecretBlock({
+          username: "alice",
+          saltHex: "abcd",
+          bHex: "01ff",
+          aHex: "deadbeef",
+        }),
+        "base64",
+      );
+      raw[raw.length - 1] ^= 1;
+      expect(() => decodeSecretBlock(raw.toString("base64"))).toThrow();
+    });
+
+    it("does not reveal the private ephemeral b", () => {
+      const bHex = "0123456789abcdef0123456789abcdef";
       const block = encodeSecretBlock({
         username: "alice",
         saltHex: "abcd",
-        bHex: "01ff",
+        bHex,
         aHex: "deadbeef",
       });
-      const wrapper = JSON.parse(
-        Buffer.from(block, "base64").toString("utf8"),
-      ) as { d: string; m: string };
-      wrapper.d = wrapper.d.replace("alice", "mallory");
-      const tampered = Buffer.from(JSON.stringify(wrapper), "utf8").toString(
-        "base64",
-      );
-      expect(() => decodeSecretBlock(tampered)).toThrow();
+      const decoded = Buffer.from(block, "base64");
+      expect(decoded.toString("utf8")).not.toContain(bHex);
+      expect(decoded.toString("hex")).not.toContain(bHex);
     });
   });
 });
