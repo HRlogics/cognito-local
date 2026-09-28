@@ -1,0 +1,7 @@
+# Whitelist: the Dockerfile only needs these
+*
+!package.json
+!package-lock.json
+!src
+!tsconfig.json
+!tsconfig.build.json
