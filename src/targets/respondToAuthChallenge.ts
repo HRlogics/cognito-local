@@ -1,9 +1,9 @@
+import { randomUUID } from "node:crypto";
 import type {
   DeliveryMediumType,
   RespondToAuthChallengeRequest,
   RespondToAuthChallengeResponse,
 } from "aws-sdk/clients/cognitoidentityserviceprovider";
-import { v4 } from "uuid";
 import {
   CodeMismatchError,
   InvalidParameterError,
@@ -11,12 +11,14 @@ import {
   UnsupportedError,
 } from "../errors";
 import type { Services } from "../services";
+import * as srp from "../services/srp";
 import { verify as verifyTotp } from "../services/totp";
 import {
   attributeValue,
   type MFAOption,
   type User,
 } from "../services/userPoolService";
+import { assertCanSignIn, newPasswordChallenge } from "./challenges";
 import type { Target } from "./Target";
 
 export type RespondToAuthChallengeTarget = Target<
@@ -77,7 +79,7 @@ const sendSmsMfaChallenge = async (
       CODE_DELIVERY_DESTINATION: deliveryDestination,
       USER_ID_FOR_SRP: user.Username,
     },
-    Session: v4(),
+    Session: randomUUID(),
   };
 };
 
@@ -94,7 +96,8 @@ export const RespondToAuthChallenge =
     if (!req.ChallengeResponses.USERNAME) {
       throw new InvalidParameterError("Missing required parameter USERNAME");
     }
-    if (!req.Session) {
+    // PASSWORD_VERIFIER carries its state in SECRET_BLOCK, SRP clients send no Session
+    if (!req.Session && req.ChallengeName !== "PASSWORD_VERIFIER") {
       throw new InvalidParameterError("Missing required parameter Session");
     }
 
@@ -136,7 +139,7 @@ export const RespondToAuthChallenge =
                 }
               : {}),
           },
-          Session: v4(),
+          Session: randomUUID(),
         };
       }
       throw new InvalidParameterError(
@@ -184,14 +187,34 @@ export const RespondToAuthChallenge =
         UserStatus: "CONFIRMED",
       });
     } else if (req.ChallengeName === "PASSWORD_VERIFIER") {
-      // Simplified SRP: we don't verify the actual SRP proof.
-      // Instead, we just verify the password matches directly.
-      // The real SRP math is skipped in this emulator.
-      if (user.Password === undefined) {
+      const secretBlock = req.ChallengeResponses.PASSWORD_CLAIM_SECRET_BLOCK;
+      if (!secretBlock) {
+        throw new InvalidParameterError(
+          "Missing required parameter PASSWORD_CLAIM_SECRET_BLOCK",
+        );
+      }
+      if (!req.ChallengeResponses.TIMESTAMP) {
+        throw new InvalidParameterError("Missing required parameter TIMESTAMP");
+      }
+      if (!req.ChallengeResponses.PASSWORD_CLAIM_SIGNATURE) {
+        throw new InvalidParameterError(
+          "Missing required parameter PASSWORD_CLAIM_SIGNATURE",
+        );
+      }
+
+      if (
+        !srp.verifyPasswordClaim(
+          userPool.options.Id,
+          user,
+          secretBlock,
+          req.ChallengeResponses.TIMESTAMP,
+          req.ChallengeResponses.PASSWORD_CLAIM_SIGNATURE,
+        )
+      ) {
         throw new NotAuthorizedError("Incorrect username or password.");
       }
-      // In a real SRP flow, PASSWORD_CLAIM_SIGNATURE would be verified
-      // against the SRP shared secret. For the emulator, we trust the client.
+      // the block may predate a status change (e.g. AdminResetUserPassword)
+      assertCanSignIn(user);
 
       // Check if MFA is required
       if (
@@ -208,19 +231,12 @@ export const RespondToAuthChallenge =
           ChallengeParameters: {
             USER_ID_FOR_SRP: user.Username,
           } as RespondToAuthChallengeResponse["ChallengeParameters"],
-          Session: v4(),
+          Session: randomUUID(),
         };
       }
 
       if (user.UserStatus === "FORCE_CHANGE_PASSWORD") {
-        return {
-          ChallengeName: "NEW_PASSWORD_REQUIRED",
-          ChallengeParameters: {
-            USER_ID_FOR_SRP: user.Username,
-            requiredAttributes: JSON.stringify([]),
-          } as RespondToAuthChallengeResponse["ChallengeParameters"],
-          Session: v4(),
-        };
+        return newPasswordChallenge(user);
       }
     } else if (req.ChallengeName === "MFA_SETUP") {
       // MFA_SETUP is returned when a user needs to set up TOTP MFA
@@ -279,17 +295,23 @@ export const RespondToAuthChallenge =
       });
     }
 
-    const userGroups = await userPool.listUserGroupMembership(ctx, user);
+    // the branches above may have saved the user (new password, MFA settings), and
+    // storeRefreshToken writes back the object it gets, so use the stored copy
+    const latestUser =
+      (await userPool.getUserByUsername(ctx, user.Username)) ?? user;
+    const userGroups = await userPool.listUserGroupMembership(ctx, latestUser);
+    const tokens = await tokenGenerator.generate(
+      ctx,
+      latestUser,
+      userGroups,
+      userPoolClient,
+      req.ClientMetadata,
+      "Authentication",
+    );
+    await userPool.storeRefreshToken(ctx, tokens.RefreshToken, latestUser);
 
     return {
       ChallengeParameters: {},
-      AuthenticationResult: await tokenGenerator.generate(
-        ctx,
-        user,
-        userGroups,
-        userPoolClient,
-        req.ClientMetadata,
-        "Authentication",
-      ),
+      AuthenticationResult: tokens,
     };
   };

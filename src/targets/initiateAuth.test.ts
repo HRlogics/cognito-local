@@ -136,6 +136,7 @@ describe("InitiateAuth target", () => {
             AccessToken: "access",
             IdToken: "id",
             RefreshToken: "refresh",
+            ExpiresIn: 3600,
           });
 
           const user = TDB.user();
@@ -420,6 +421,7 @@ describe("InitiateAuth target", () => {
               AccessToken: "access",
               IdToken: "id",
               RefreshToken: "refresh",
+              ExpiresIn: 3600,
             });
             mockUserPoolService.listUserGroupMembership.mockResolvedValue([]);
 
@@ -577,6 +579,7 @@ describe("InitiateAuth target", () => {
             AccessToken: "access",
             IdToken: "id",
             RefreshToken: "refresh",
+            ExpiresIn: 3600,
           });
           mockUserPoolService.listUserGroupMembership.mockResolvedValue([]);
 
@@ -614,6 +617,7 @@ describe("InitiateAuth target", () => {
               AccessToken: "access",
               IdToken: "id",
               RefreshToken: "refresh",
+              ExpiresIn: 3600,
             });
 
             mockTriggers.enabled.mockImplementation(
@@ -663,7 +667,7 @@ describe("InitiateAuth target", () => {
           AuthFlow: "USER_PASSWORD_AUTH",
           AuthParameters: {
             USERNAME: user.Username,
-            PASSWORD: "bad-password",
+            PASSWORD: user.Password,
           },
         });
 
@@ -676,6 +680,21 @@ describe("InitiateAuth target", () => {
           },
           Session: expect.stringMatching(UUID),
         });
+      });
+
+      it("rejects a wrong temporary password", async () => {
+        await expect(
+          initiateAuth(TestContext, {
+            ClientId: userPoolClient.ClientId,
+            AuthFlow: "USER_PASSWORD_AUTH",
+            AuthParameters: {
+              USERNAME: user.Username,
+              PASSWORD: "bad-password",
+            },
+          }),
+        ).rejects.toEqual(
+          new NotAuthorizedError("Incorrect username or password."),
+        );
       });
 
       describe("when Post Authentication trigger is enabled", () => {
@@ -719,6 +738,7 @@ describe("InitiateAuth target", () => {
         AccessToken: "access",
         IdToken: "id",
         RefreshToken: "refresh",
+        ExpiresIn: 3600,
       });
 
       const existingUser = TDB.user({

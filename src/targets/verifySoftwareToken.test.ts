@@ -1,5 +1,5 @@
+import { randomUUID } from "node:crypto";
 import jwt from "jsonwebtoken";
-import * as uuid from "uuid";
 import { beforeEach, describe, expect, it, type MockedObject } from "vitest";
 import { newMockCognitoService } from "../__tests__/mockCognitoService";
 import { newMockUserPoolService } from "../__tests__/mockUserPoolService";
@@ -22,7 +22,7 @@ const signAccessToken = (sub: string) =>
       token_use: "access",
       scope: "aws.cognito.signin.user.admin",
       auth_time: new Date(),
-      jti: uuid.v4(),
+      jti: randomUUID(),
       client_id: "test",
       username: sub,
     },

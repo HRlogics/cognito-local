@@ -1,5 +1,5 @@
+import { randomUUID } from "node:crypto";
 import type { AttributeListType } from "aws-sdk/clients/cognitoidentityserviceprovider";
-import * as uuid from "uuid";
 import { NotAuthorizedError, ResourceNotFoundError } from "../../errors";
 import type { Clock } from "../clock";
 import type { CognitoService } from "../cognitoService";
@@ -86,13 +86,16 @@ export const UserMigration =
     }
 
     const now = clock.get();
+    // Cognito assigns sub itself (a lambda cannot set it); a pool without a returned
+    // username gets the sub as username, like SignUp with email usernames
+    const sub = randomUUID();
     const user: User = {
-      Attributes: attributesFromRecord(result.userAttributes ?? {}),
+      Attributes: attributesFromRecord({ ...result.userAttributes, sub }),
       Enabled: true,
       Password: password,
       UserCreateDate: now,
       UserLastModifiedDate: now,
-      Username: result.userAttributes?.username || uuid.v4(),
+      Username: result.userAttributes?.username || sub,
       UserStatus: result.finalUserStatus ?? "CONFIRMED",
       RefreshTokens: [],
     };

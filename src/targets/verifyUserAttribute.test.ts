@@ -1,5 +1,5 @@
+import { randomUUID } from "node:crypto";
 import jwt from "jsonwebtoken";
-import * as uuid from "uuid";
 import { beforeEach, describe, expect, it, type MockedObject } from "vitest";
 import { ClockFake } from "../__tests__/clockFake";
 import { newMockCognitoService } from "../__tests__/mockCognitoService";
@@ -8,6 +8,7 @@ import { TestContext } from "../__tests__/testContext";
 import * as TDB from "../__tests__/testDataBuilder";
 import {
   CodeMismatchError,
+  INVALID_VERIFICATION_CODE,
   InvalidParameterError,
   NotAuthorizedError,
 } from "../errors";
@@ -28,7 +29,7 @@ const validToken = jwt.sign(
     token_use: "access",
     scope: "aws.cognito.signin.user.admin",
     auth_time: new Date(),
-    jti: uuid.v4(),
+    jti: randomUUID(),
     client_id: "test",
     username: "0000-0000",
   },
@@ -188,6 +189,6 @@ describe("VerifyUserAttribute target", () => {
         AttributeName: "email",
         Code: "123456",
       }),
-    ).rejects.toEqual(new CodeMismatchError());
+    ).rejects.toEqual(new CodeMismatchError(INVALID_VERIFICATION_CODE));
   });
 });

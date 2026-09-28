@@ -32,6 +32,12 @@ describe("AdminRespondToAuthChallenge target", () => {
   beforeEach(() => {
     clock = new ClockFake(currentDate);
     mockTokenGenerator = newMockTokenGenerator();
+    mockTokenGenerator.generate.mockResolvedValue({
+      AccessToken: "access",
+      IdToken: "id",
+      RefreshToken: "refresh",
+      ExpiresIn: 3600,
+    });
     mockTriggers = newMockTriggers();
     mockUserPoolService = newMockUserPoolService({
       Id: userPoolClient.UserPoolId,
@@ -112,6 +118,7 @@ describe("AdminRespondToAuthChallenge target", () => {
         AccessToken: "access",
         IdToken: "id",
         RefreshToken: "refresh",
+        ExpiresIn: 3600,
       });
       mockUserPoolService.listUserGroupMembership.mockResolvedValue([]);
 
@@ -162,6 +169,7 @@ describe("AdminRespondToAuthChallenge target", () => {
         AccessToken: "access",
         IdToken: "id",
         RefreshToken: "refresh",
+        ExpiresIn: 3600,
       });
       mockUserPoolService.listUserGroupMembership.mockResolvedValue([]);
 
@@ -192,6 +200,45 @@ describe("AdminRespondToAuthChallenge target", () => {
           Session: "Session",
         }),
       ).rejects.toBeInstanceOf(CodeMismatchError);
+    });
+  });
+
+  describe("ChallengeName=PASSWORD_VERIFIER", () => {
+    const user = TDB.user();
+
+    beforeEach(() => {
+      mockUserPoolService.getUserByUsername.mockResolvedValue(user);
+    });
+
+    it("requires the SRP proof", async () => {
+      await expect(
+        adminRespondToAuthChallenge(TestContext, {
+          ClientId: userPoolClient.ClientId,
+          UserPoolId: userPoolClient.UserPoolId,
+          ChallengeName: "PASSWORD_VERIFIER",
+          ChallengeResponses: { USERNAME: user.Username },
+          Session: "Session",
+        }),
+      ).rejects.toBeInstanceOf(InvalidParameterError);
+      expect(mockTokenGenerator.generate).not.toHaveBeenCalled();
+    });
+
+    it("rejects a forged proof", async () => {
+      await expect(
+        adminRespondToAuthChallenge(TestContext, {
+          ClientId: userPoolClient.ClientId,
+          UserPoolId: userPoolClient.UserPoolId,
+          ChallengeName: "PASSWORD_VERIFIER",
+          ChallengeResponses: {
+            USERNAME: user.Username,
+            PASSWORD_CLAIM_SECRET_BLOCK: "AAAA",
+            TIMESTAMP: "Mon Jun 10 00:00:00 UTC 2026",
+            PASSWORD_CLAIM_SIGNATURE: "AAAA",
+          },
+          Session: "Session",
+        }),
+      ).rejects.toBeInstanceOf(NotAuthorizedError);
+      expect(mockTokenGenerator.generate).not.toHaveBeenCalled();
     });
   });
 
@@ -229,6 +276,7 @@ describe("AdminRespondToAuthChallenge target", () => {
         AccessToken: "access",
         IdToken: "id",
         RefreshToken: "refresh",
+        ExpiresIn: 3600,
       });
       mockUserPoolService.listUserGroupMembership.mockResolvedValue([]);
 

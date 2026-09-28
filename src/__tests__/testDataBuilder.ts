@@ -1,4 +1,4 @@
-import { v4 } from "uuid";
+import { randomUUID } from "node:crypto";
 import type { AppClient } from "../services/appClient";
 import { USER_POOL_AWS_DEFAULTS } from "../services/cognitoService";
 import type { Group, User, UserPool } from "../services/userPoolService";
@@ -45,7 +45,7 @@ export const group = (partial?: Partial<Group>): Group => ({
 export const user = (partial?: Partial<User>): User => ({
   Attributes: partial?.Attributes ?? [
     { Name: "email", Value: `${id("example")}@example.com` },
-    { Name: "sub", Value: v4() },
+    { Name: "sub", Value: randomUUID() },
   ],
   AccessTokensRevokedAt: partial?.AccessTokensRevokedAt,
   AttributeVerificationCode: partial?.AttributeVerificationCode ?? undefined,

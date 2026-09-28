@@ -69,6 +69,35 @@ describe("JwtTokenGenerator", () => {
       });
     });
 
+    it("passes the user's groups to the trigger", async () => {
+      mockTriggers.enabled.mockImplementation(
+        (name) => name === "PreTokenGeneration",
+      );
+      mockTriggers.preTokenGeneration.mockResolvedValue({
+        claimsOverrideDetails: {},
+      });
+
+      await tokenGenerator.generate(
+        TestContext,
+        user,
+        ["admins", "editors"],
+        TDB.appClient(),
+        undefined,
+        "Authentication",
+      );
+
+      expect(mockTriggers.preTokenGeneration).toHaveBeenCalledWith(
+        TestContext,
+        expect.objectContaining({
+          groupConfiguration: {
+            groupsToOverride: ["admins", "editors"],
+            iamRolesToOverride: [],
+            preferredRole: undefined,
+          },
+        }),
+      );
+    });
+
     it("can suppress claims in the id token", async () => {
       mockTriggers.enabled.mockImplementation((name) => {
         return name === "PreTokenGeneration";
@@ -232,6 +261,75 @@ describe("JwtTokenGenerator", () => {
         jti: expect.stringMatching(UUID),
       });
     });
+  });
+
+  it.each([
+    ["true", true],
+    ["false", false],
+  ])(
+    "maps email_verified=%s to %s in the id token",
+    async (value, expected) => {
+      const tokens = await tokenGenerator.generate(
+        TestContext,
+        TDB.user({
+          Attributes: [
+            { Name: "email", Value: "a@example.com" },
+            { Name: "email_verified", Value: value },
+          ],
+        }),
+        [],
+        TDB.appClient(),
+        undefined,
+        "Authentication",
+      );
+
+      expect(jwt.decode(tokens.IdToken)).toMatchObject({
+        email_verified: expected,
+      });
+    },
+  );
+
+  it("copies standard attributes into the id token only", async () => {
+    const tokens = await tokenGenerator.generate(
+      TestContext,
+      TDB.user({
+        Attributes: [
+          { Name: "given_name", Value: "Ada" },
+          { Name: "family_name", Value: "Lovelace" },
+          { Name: "phone_number", Value: "+15550100" },
+          { Name: "phone_number_verified", Value: "true" },
+          { Name: "custom:team", Value: "blue" },
+        ],
+      }),
+      [],
+      TDB.appClient(),
+      undefined,
+      "Authentication",
+    );
+
+    expect(jwt.decode(tokens.IdToken)).toMatchObject({
+      given_name: "Ada",
+      family_name: "Lovelace",
+      phone_number: "+15550100",
+      phone_number_verified: true,
+      "custom:team": "blue",
+    });
+    expect(jwt.decode(tokens.AccessToken)).not.toHaveProperty("given_name");
+  });
+
+  it("omits email claims for a user without an email", async () => {
+    const tokens = await tokenGenerator.generate(
+      TestContext,
+      TDB.user({ Attributes: [{ Name: "phone_number", Value: "+15550100" }] }),
+      [],
+      TDB.appClient(),
+      undefined,
+      "Authentication",
+    );
+
+    const idToken = jwt.decode(tokens.IdToken);
+    expect(idToken).not.toHaveProperty("email");
+    expect(idToken).not.toHaveProperty("email_verified");
   });
 
   describe("expiration configuration", () => {

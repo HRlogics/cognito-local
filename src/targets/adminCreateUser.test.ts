@@ -2,13 +2,14 @@ import { beforeEach, describe, expect, it, type MockedObject } from "vitest";
 import { ClockFake } from "../__tests__/clockFake";
 import { newMockCognitoService } from "../__tests__/mockCognitoService";
 import { newMockMessages } from "../__tests__/mockMessages";
+import { newMockTriggers } from "../__tests__/mockTriggers";
 import { newMockUserPoolService } from "../__tests__/mockUserPoolService";
 import { UUID } from "../__tests__/patterns";
 import { TestContext } from "../__tests__/testContext";
 import * as TDB from "../__tests__/testDataBuilder";
 import { InvalidParameterError, UsernameExistsError } from "../errors";
 import { type Config, DefaultConfig } from "../server/config";
-import type { Messages, UserPoolService } from "../services";
+import type { Messages, Triggers, UserPoolService } from "../services";
 import { AdminCreateUser, type AdminCreateUserTarget } from "./adminCreateUser";
 
 const originalDate = new Date();
@@ -17,17 +18,91 @@ describe("AdminCreateUser target", () => {
   let adminCreateUser: AdminCreateUserTarget;
   let mockUserPoolService: MockedObject<UserPoolService>;
   let mockMessages: MockedObject<Messages>;
+  let mockTriggers: MockedObject<Triggers>;
   let config: Config;
 
   beforeEach(() => {
     mockUserPoolService = newMockUserPoolService();
     mockMessages = newMockMessages();
+    mockTriggers = newMockTriggers();
     config = DefaultConfig;
     adminCreateUser = AdminCreateUser({
       cognito: newMockCognitoService(mockUserPoolService),
       clock: new ClockFake(originalDate),
       config,
       messages: mockMessages,
+      triggers: mockTriggers,
+    });
+  });
+
+  describe("when PreSignUp trigger is enabled", () => {
+    beforeEach(() => {
+      mockTriggers.enabled.mockImplementation(
+        (trigger) => trigger === "PreSignUp",
+      );
+    });
+
+    it("invokes it with the AdminCreateUser source and ValidationData", async () => {
+      mockTriggers.preSignUp.mockResolvedValue({
+        autoConfirmUser: false,
+        autoVerifyEmail: false,
+        autoVerifyPhone: false,
+      });
+
+      await adminCreateUser(TestContext, {
+        ClientMetadata: { client: "metadata" },
+        MessageAction: "SUPPRESS",
+        TemporaryPassword: "pwd",
+        UserAttributes: [{ Name: "email", Value: "example@example.com" }],
+        Username: "user-supplied",
+        UserPoolId: "test",
+        ValidationData: [{ Name: "invite", Value: "abc" }],
+      });
+
+      expect(mockTriggers.preSignUp).toHaveBeenCalledWith(TestContext, {
+        clientId: "CLIENT_ID_NOT_APPLICABLE",
+        clientMetadata: { client: "metadata" },
+        source: "PreSignUp_AdminCreateUser",
+        userAttributes: [
+          { Name: "sub", Value: expect.stringMatching(UUID) },
+          { Name: "email", Value: "example@example.com" },
+        ],
+        username: "user-supplied",
+        userPoolId: "test",
+        validationData: { invite: "abc" },
+      });
+    });
+
+    it("ignores the auto-confirm and auto-verify flags", async () => {
+      mockTriggers.preSignUp.mockResolvedValue({
+        autoConfirmUser: true,
+        autoVerifyEmail: true,
+        autoVerifyPhone: true,
+      });
+
+      await adminCreateUser(TestContext, {
+        TemporaryPassword: "pwd",
+        UserAttributes: [
+          { Name: "email", Value: "example@example.com" },
+          { Name: "email_verified", Value: "false" },
+          { Name: "phone_number", Value: "+61400000000" },
+        ],
+        Username: "user-supplied",
+        UserPoolId: "test",
+      });
+
+      expect(mockUserPoolService.saveUser).toHaveBeenCalledWith(
+        TestContext,
+        expect.objectContaining({
+          Attributes: [
+            { Name: "email", Value: "example@example.com" },
+            { Name: "email_verified", Value: "false" },
+            { Name: "phone_number", Value: "+61400000000" },
+            { Name: "sub", Value: expect.stringMatching(UUID) },
+          ],
+          UserStatus: "FORCE_CHANGE_PASSWORD",
+        }),
+      );
     });
   });
 
@@ -36,7 +111,7 @@ describe("AdminCreateUser target", () => {
       TemporaryPassword: "pwd",
       UserAttributes: [
         { Name: "email", Value: "example@example.com" },
-        { Name: "phone_number", Value: "0400000000" },
+        { Name: "phone_number", Value: "+61400000000" },
       ],
       Username: "user-supplied",
       UserPoolId: "test",
@@ -45,7 +120,7 @@ describe("AdminCreateUser target", () => {
     expect(mockUserPoolService.saveUser).toHaveBeenCalledWith(TestContext, {
       Attributes: [
         { Name: "email", Value: "example@example.com" },
-        { Name: "phone_number", Value: "0400000000" },
+        { Name: "phone_number", Value: "+61400000000" },
         {
           Name: "sub",
           Value: expect.stringMatching(UUID),
@@ -68,7 +143,7 @@ describe("AdminCreateUser target", () => {
       TemporaryPassword: "pwd",
       UserAttributes: [
         { Name: "email", Value: "example@example.com" },
-        { Name: "phone_number", Value: "0400000000" },
+        { Name: "phone_number", Value: "+61400000000" },
       ],
       Username: "example@example.com",
       UserPoolId: "test",
@@ -77,7 +152,7 @@ describe("AdminCreateUser target", () => {
     expect(mockUserPoolService.saveUser).toHaveBeenCalledWith(TestContext, {
       Attributes: [
         { Name: "email", Value: "example@example.com" },
-        { Name: "phone_number", Value: "0400000000" },
+        { Name: "phone_number", Value: "+61400000000" },
         {
           Name: "sub",
           Value: expect.stringMatching(UUID),
@@ -97,7 +172,7 @@ describe("AdminCreateUser target", () => {
     await adminCreateUser(TestContext, {
       UserAttributes: [
         { Name: "email", Value: "example@example.com" },
-        { Name: "phone_number", Value: "0400000000" },
+        { Name: "phone_number", Value: "+61400000000" },
       ],
       Username: "user-supplied",
       UserPoolId: "test",
@@ -106,7 +181,7 @@ describe("AdminCreateUser target", () => {
     expect(mockUserPoolService.saveUser).toHaveBeenCalledWith(TestContext, {
       Attributes: [
         { Name: "email", Value: "example@example.com" },
-        { Name: "phone_number", Value: "0400000000" },
+        { Name: "phone_number", Value: "+61400000000" },
         {
           Name: "sub",
           Value: expect.stringMatching(UUID),
@@ -183,7 +258,7 @@ describe("AdminCreateUser target", () => {
           },
           DesiredDeliveryMediums: ["SMS"],
           TemporaryPassword: "pwd",
-          UserAttributes: [{ Name: "phone_number", Value: "0400000000" }],
+          UserAttributes: [{ Name: "phone_number", Value: "+61400000000" }],
           Username: "user-supplied",
           UserPoolId: "test",
         });
@@ -201,7 +276,7 @@ describe("AdminCreateUser target", () => {
           {
             AttributeName: "phone_number",
             DeliveryMedium: "SMS",
-            Destination: "0400000000",
+            Destination: "+61400000000",
           },
         );
       });
@@ -232,7 +307,7 @@ describe("AdminCreateUser target", () => {
             client: "metadata",
           },
           TemporaryPassword: "pwd",
-          UserAttributes: [{ Name: "phone_number", Value: "0400000000" }],
+          UserAttributes: [{ Name: "phone_number", Value: "+61400000000" }],
           Username: "user-supplied",
           UserPoolId: "test",
         });
@@ -250,7 +325,7 @@ describe("AdminCreateUser target", () => {
           {
             AttributeName: "phone_number",
             DeliveryMedium: "SMS",
-            Destination: "0400000000",
+            Destination: "+61400000000",
           },
         );
       });
@@ -286,7 +361,7 @@ describe("AdminCreateUser target", () => {
           TemporaryPassword: "pwd",
           UserAttributes: [
             { Name: "email", Value: "example@example.com" },
-            { Name: "phone_number", Value: "0400000000" },
+            { Name: "phone_number", Value: "+61400000000" },
           ],
           Username: "user-supplied",
           UserPoolId: "test",
@@ -305,7 +380,7 @@ describe("AdminCreateUser target", () => {
           {
             AttributeName: "phone_number",
             DeliveryMedium: "SMS",
-            Destination: "0400000000",
+            Destination: "+61400000000",
           },
         );
       });
@@ -394,6 +469,53 @@ describe("AdminCreateUser target", () => {
       UserStatus: "FORCE_CHANGE_PASSWORD",
       Username: "user-supplied",
       RefreshTokens: [],
+    });
+  });
+
+  describe.each([
+    "0400000000",
+    "+1NotAPhoNum",
+    "+ThisIsDefinitelyNotAPhoneNum",
+    "+",
+    "+0123456789",
+    "1234567890",
+  ])("when phone_number is %j", (phoneNumber) => {
+    it("throws InvalidParameterError with the real-Cognito message", async () => {
+      const promise = adminCreateUser(TestContext, {
+        TemporaryPassword: "pwd",
+        UserAttributes: [{ Name: "phone_number", Value: phoneNumber }],
+        Username: "user-supplied",
+        UserPoolId: "test",
+      });
+
+      await expect(promise).rejects.toBeInstanceOf(InvalidParameterError);
+      await expect(promise).rejects.toThrow("Invalid phone number format.");
+      expect(mockUserPoolService.saveUser).not.toHaveBeenCalled();
+      expect(mockMessages.deliver).not.toHaveBeenCalled();
+    });
+  });
+
+  describe.each([
+    "test+roger@@qbdvision.com",
+    "test14+roger@qbdvision.com!!!!",
+    "no-at-sign",
+    "missing-tld@example",
+    "@no-local.com",
+    "trailing-dot@example.",
+    "spaces in@local.com",
+  ])("when email is %j", (email) => {
+    it("throws InvalidParameterError with the real-Cognito message", async () => {
+      const promise = adminCreateUser(TestContext, {
+        TemporaryPassword: "pwd",
+        UserAttributes: [{ Name: "email", Value: email }],
+        Username: "user-supplied",
+        UserPoolId: "test",
+      });
+
+      await expect(promise).rejects.toBeInstanceOf(InvalidParameterError);
+      await expect(promise).rejects.toThrow("Invalid email address format.");
+      expect(mockUserPoolService.saveUser).not.toHaveBeenCalled();
+      expect(mockMessages.deliver).not.toHaveBeenCalled();
     });
   });
 

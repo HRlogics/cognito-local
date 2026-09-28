@@ -1,17 +1,19 @@
+import { randomUUID } from "node:crypto";
 import type {
   AdminInitiateAuthRequest,
   AdminInitiateAuthResponse,
 } from "aws-sdk/clients/cognitoidentityserviceprovider";
-import { v4 } from "uuid";
 import {
   InvalidParameterError,
   NotAuthorizedError,
+  PasswordResetRequiredError,
   UnsupportedError,
   UserNotConfirmedException,
   unknownUserError,
 } from "../errors";
 import type { Services } from "../services";
 import type { Context } from "../services/context";
+import { newPasswordChallenge } from "./challenges";
 import type { Target } from "./Target";
 
 export type AdminInitiateAuthTarget = Target<
@@ -75,8 +77,14 @@ const adminUserPasswordAuthFlow = async (
     throw new NotAuthorizedError("User is disabled.");
   }
 
+  if (user.UserStatus === "RESET_REQUIRED") {
+    throw new PasswordResetRequiredError();
+  }
   if (user.Password !== req.AuthParameters.PASSWORD) {
     throw new NotAuthorizedError("Incorrect username or password.");
+  }
+  if (user.UserStatus === "FORCE_CHANGE_PASSWORD") {
+    return newPasswordChallenge(user);
   }
 
   if (user.UserStatus === "UNCONFIRMED") {
@@ -100,7 +108,7 @@ const adminUserPasswordAuthFlow = async (
           ? "SOFTWARE_TOKEN_MFA"
           : "SMS_MFA",
       ChallengeParameters: { USER_ID_FOR_SRP: user.Username },
-      Session: v4(),
+      Session: randomUUID(),
       AuthenticationResult: undefined,
     };
   }
@@ -128,7 +136,7 @@ const adminUserPasswordAuthFlow = async (
       IdToken: tokens.IdToken,
       NewDeviceMetadata: undefined,
       TokenType: undefined,
-      ExpiresIn: undefined,
+      ExpiresIn: tokens.ExpiresIn,
     },
   };
 };
@@ -185,7 +193,7 @@ const refreshTokenAuthFlow = async (
       IdToken: tokens.IdToken,
       NewDeviceMetadata: undefined,
       TokenType: undefined,
-      ExpiresIn: undefined,
+      ExpiresIn: tokens.ExpiresIn,
     },
   };
 };
@@ -274,7 +282,7 @@ const customAuthFlow = async (
       ...challengeResult.publicChallengeParameters,
       USER_ID_FOR_SRP: user.Username,
     },
-    Session: v4(),
+    Session: randomUUID(),
   };
 };
 

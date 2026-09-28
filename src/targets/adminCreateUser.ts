@@ -1,18 +1,21 @@
+import { randomUUID } from "node:crypto";
 import type {
   AdminCreateUserRequest,
   AdminCreateUserResponse,
   DeliveryMediumListType,
 } from "aws-sdk/clients/cognitoidentityserviceprovider";
 import { createTranslator } from "short-uuid";
-import * as uuid from "uuid";
 import { InvalidParameterError, UsernameExistsError } from "../errors";
 import type { Messages, Services, UserPoolService } from "../services";
 import type { Context } from "../services/context";
 import type { DeliveryDetails } from "../services/messageDelivery/messageDelivery";
 import {
   attributesInclude,
+  attributesToRecord,
   attributeValue,
   type User,
+  validateEmailAttribute,
+  validatePhoneNumberAttribute,
 } from "../services/userPoolService";
 import { userToResponseObject } from "./responses";
 import type { Target } from "./Target";
@@ -28,7 +31,7 @@ export type AdminCreateUserTarget = Target<
 
 type AdminCreateUserServices = Pick<
   Services,
-  "clock" | "cognito" | "messages" | "config"
+  "clock" | "cognito" | "messages" | "config" | "triggers"
 >;
 
 const selectAppropriateDeliveryMethod = (
@@ -96,8 +99,12 @@ export const AdminCreateUser =
     clock,
     cognito,
     messages,
+    triggers,
   }: AdminCreateUserServices): AdminCreateUserTarget =>
   async (ctx, req) => {
+    validatePhoneNumberAttribute(req.UserAttributes);
+    validateEmailAttribute(req.UserAttributes);
+
     const userPool = await cognito.getUserPool(ctx, req.UserPoolId);
     const existingUser = await userPool.getUserByUsername(ctx, req.Username);
     const supressWelcomeMessage = req.MessageAction === "SUPPRESS";
@@ -131,7 +138,7 @@ export const AdminCreateUser =
       throw new UsernameExistsError();
     }
 
-    const sub = uuid.v4();
+    const sub = randomUUID();
     const attributes = attributesInclude("sub", req.UserAttributes)
       ? (req.UserAttributes ?? [])
       : [{ Name: "sub", Value: sub }, ...(req.UserAttributes ?? [])];
@@ -160,6 +167,22 @@ export const AdminCreateUser =
       username = sub;
     }
 
+    if (triggers.enabled("PreSignUp")) {
+      // runs for validation only: Cognito ignores autoConfirmUser, autoVerifyEmail and
+      // autoVerifyPhone for AdminCreateUser, so the attributes stay as the admin sent them
+      await triggers.preSignUp(ctx, {
+        clientId: "CLIENT_ID_NOT_APPLICABLE",
+        clientMetadata: req.ClientMetadata,
+        source: "PreSignUp_AdminCreateUser",
+        userAttributes: [...attributes],
+        username,
+        userPoolId: userPool.options.Id,
+        validationData: req.ValidationData
+          ? attributesToRecord(req.ValidationData)
+          : undefined,
+      });
+    }
+
     const user: User = {
       Username: username,
       Password: temporaryPassword,
@@ -177,7 +200,6 @@ export const AdminCreateUser =
     // TODO: support MessageAction=="RESEND"
     // TODO: should generate a TemporaryPassword if one isn't set
     // TODO: support ForceAliasCreation
-    // TODO: support PreSignIn lambda and ValidationData
 
     if (!supressWelcomeMessage) {
       await deliverWelcomeMessage(

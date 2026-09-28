@@ -1,8 +1,8 @@
+import { randomUUID } from "node:crypto";
 import type {
   AdminRespondToAuthChallengeRequest,
   AdminRespondToAuthChallengeResponse,
 } from "aws-sdk/clients/cognitoidentityserviceprovider";
-import { v4 } from "uuid";
 import {
   CodeMismatchError,
   InvalidParameterError,
@@ -10,7 +10,9 @@ import {
   UnsupportedError,
 } from "../errors";
 import type { Services } from "../services";
+import * as srp from "../services/srp";
 import { verify as verifyTotp } from "../services/totp";
+import { assertCanSignIn, newPasswordChallenge } from "./challenges";
 import type { Target } from "./Target";
 
 export type AdminRespondToAuthChallengeTarget = Target<
@@ -96,9 +98,26 @@ export const AdminRespondToAuthChallenge =
         UserStatus: "CONFIRMED",
       });
     } else if (req.ChallengeName === "PASSWORD_VERIFIER") {
-      if (user.Password === undefined) {
+      const secretBlock = req.ChallengeResponses.PASSWORD_CLAIM_SECRET_BLOCK;
+      const timestamp = req.ChallengeResponses.TIMESTAMP;
+      const signature = req.ChallengeResponses.PASSWORD_CLAIM_SIGNATURE;
+      if (!secretBlock || !timestamp || !signature) {
+        throw new InvalidParameterError(
+          "PASSWORD_VERIFIER requires PASSWORD_CLAIM_SECRET_BLOCK, TIMESTAMP and PASSWORD_CLAIM_SIGNATURE",
+        );
+      }
+      if (
+        !srp.verifyPasswordClaim(
+          userPool.options.Id,
+          user,
+          secretBlock,
+          timestamp,
+          signature,
+        )
+      ) {
         throw new NotAuthorizedError("Incorrect username or password.");
       }
+      assertCanSignIn(user);
       if (
         (userPool.options.MfaConfiguration === "OPTIONAL" &&
           ((user.MFAOptions ?? []).length > 0 ||
@@ -113,18 +132,11 @@ export const AdminRespondToAuthChallenge =
           ChallengeParameters: {
             USER_ID_FOR_SRP: user.Username,
           } as AdminRespondToAuthChallengeResponse["ChallengeParameters"],
-          Session: v4(),
+          Session: randomUUID(),
         };
       }
       if (user.UserStatus === "FORCE_CHANGE_PASSWORD") {
-        return {
-          ChallengeName: "NEW_PASSWORD_REQUIRED",
-          ChallengeParameters: {
-            USER_ID_FOR_SRP: user.Username,
-            requiredAttributes: JSON.stringify([]),
-          } as AdminRespondToAuthChallengeResponse["ChallengeParameters"],
-          Session: v4(),
-        };
+        return newPasswordChallenge(user);
       }
     } else if (req.ChallengeName === "MFA_SETUP") {
       if (!req.ChallengeResponses.SOFTWARE_TOKEN_MFA_CODE) {
@@ -178,17 +190,23 @@ export const AdminRespondToAuthChallenge =
       });
     }
 
-    const userGroups = await userPool.listUserGroupMembership(ctx, user);
+    // the branches above may have saved the user (new password, MFA settings), and
+    // storeRefreshToken writes back the object it gets, so use the stored copy
+    const latestUser =
+      (await userPool.getUserByUsername(ctx, user.Username)) ?? user;
+    const userGroups = await userPool.listUserGroupMembership(ctx, latestUser);
+    const tokens = await tokenGenerator.generate(
+      ctx,
+      latestUser,
+      userGroups,
+      userPoolClient,
+      req.ClientMetadata,
+      "Authentication",
+    );
+    await userPool.storeRefreshToken(ctx, tokens.RefreshToken, latestUser);
 
     return {
       ChallengeParameters: {},
-      AuthenticationResult: await tokenGenerator.generate(
-        ctx,
-        user,
-        userGroups,
-        userPoolClient,
-        req.ClientMetadata,
-        "Authentication",
-      ),
+      AuthenticationResult: tokens,
     };
   };

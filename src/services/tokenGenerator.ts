@@ -1,9 +1,9 @@
+import { randomUUID } from "node:crypto";
 import type { StringMap } from "aws-lambda/trigger/cognito-user-pool-trigger/_common";
 import type { GroupOverrideDetails } from "aws-lambda/trigger/cognito-user-pool-trigger/pre-token-generation";
 import type { TimeUnitsType } from "aws-sdk/clients/cognitoidentityserviceprovider";
 import jwt, { type SignOptions } from "jsonwebtoken";
 import type { StringValue, UnitAnyCase } from "ms";
-import * as uuid from "uuid";
 import PrivateKey from "../keys/cognitoLocal.private.json";
 import type { AppClient } from "./appClient";
 import type { Clock } from "./clock";
@@ -13,6 +13,7 @@ import {
   attributesToRecord,
   attributeValue,
   customAttributes,
+  idTokenStandardAttributes,
   type User,
 } from "./userPoolService";
 
@@ -89,6 +90,7 @@ export interface Tokens {
   readonly AccessToken: string;
   readonly IdToken: string;
   readonly RefreshToken: string;
+  readonly ExpiresIn: number;
 }
 
 export interface TokenGenerator {
@@ -127,6 +129,34 @@ const formatExpiration = (
   return `${duration}${unit}`;
 };
 
+type LongTimeUnit = "seconds" | "minutes" | "hours" | "days";
+
+const UNIT_SECONDS: Record<LongTimeUnit, number> = {
+  seconds: 1,
+  minutes: 60,
+  hours: 3600,
+  days: 86400,
+};
+
+const isLongTimeUnit = (unit: string): unit is LongTimeUnit =>
+  unit in UNIT_SECONDS;
+
+const expiresInSeconds = (
+  duration: number | undefined,
+  unit: TimeUnitsType,
+  fallback: number,
+): number => {
+  if (duration === undefined) {
+    return fallback;
+  }
+
+  if (!isLongTimeUnit(unit)) {
+    throw new Error(`Invalid unit: ${unit}`);
+  }
+
+  return duration * UNIT_SECONDS[unit];
+};
+
 export class JwtTokenGenerator implements TokenGenerator {
   private readonly clock: Clock;
   private readonly triggers: Triggers;
@@ -155,7 +185,7 @@ export class JwtTokenGenerator implements TokenGenerator {
       | "NewPasswordChallenge"
       | "RefreshTokens",
   ): Promise<Tokens> {
-    const eventId = uuid.v4();
+    const eventId = randomUUID();
     const authTime = Math.floor(this.clock.get().getTime() / 1000);
     const sub = attributeValue("sub", user.Attributes);
 
@@ -164,7 +194,7 @@ export class JwtTokenGenerator implements TokenGenerator {
       client_id: userPoolClient.ClientId,
       event_id: eventId,
       iat: authTime,
-      jti: uuid.v4(),
+      jti: randomUUID(),
       scope: "aws.cognito.signin.user.admin", // TODO: scopes
       sub,
       token_use: "access",
@@ -173,15 +203,23 @@ export class JwtTokenGenerator implements TokenGenerator {
     let idToken: RawToken = {
       "cognito:username": user.Username,
       auth_time: authTime,
-      email: attributeValue("email", user.Attributes),
-      email_verified: Boolean(
-        attributeValue("email_verified", user.Attributes) ?? false,
-      ),
+      // Cognito emits email and email_verified only for users that have an email; attribute
+      // values are strings, and Boolean("false") is true
+      ...(attributeValue("email", user.Attributes) && {
+        email: attributeValue("email", user.Attributes),
+        email_verified:
+          attributeValue("email_verified", user.Attributes) === "true",
+      }),
       event_id: eventId,
       iat: authTime,
-      jti: uuid.v4(),
+      jti: randomUUID(),
       sub,
       token_use: "id",
+      ...attributesToRecord(idTokenStandardAttributes(user.Attributes)),
+      ...(attributeValue("phone_number", user.Attributes) && {
+        phone_number_verified:
+          attributeValue("phone_number_verified", user.Attributes) === "true",
+      }),
       ...attributesToRecord(customAttributes(user.Attributes)),
     };
 
@@ -198,9 +236,9 @@ export class JwtTokenGenerator implements TokenGenerator {
         userAttributes: user.Attributes,
         username: user.Username,
         groupConfiguration: {
-          // TODO: this should be populated from the user's groups
-          groupsToOverride: undefined,
-          iamRolesToOverride: undefined,
+          groupsToOverride: [...userGroups],
+          // group IAM roles aren't modelled, so there is nothing to report
+          iamRolesToOverride: [],
           preferredRole: undefined,
         },
         userPoolId: userPoolClient.UserPoolId,
@@ -211,15 +249,19 @@ export class JwtTokenGenerator implements TokenGenerator {
 
     const issuer = `${this.tokenConfig.IssuerDomain}/${userPoolClient.UserPoolId}`;
 
+    // one value for both, so the advertised ExpiresIn always equals the JWT's exp
+    const accessTokenTtl = expiresInSeconds(
+      userPoolClient.AccessTokenValidity,
+      userPoolClient.TokenValidityUnits?.AccessToken ?? "hours",
+      24 * 60 * 60,
+    );
+
     return {
+      ExpiresIn: accessTokenTtl,
       AccessToken: jwt.sign(accessToken, PrivateKey.pem, {
         algorithm: "RS256",
         issuer,
-        expiresIn: formatExpiration(
-          userPoolClient.AccessTokenValidity,
-          userPoolClient.TokenValidityUnits?.AccessToken ?? "hours",
-          "24h",
-        ),
+        expiresIn: accessTokenTtl,
         keyid: "CognitoLocal",
       } satisfies SignOptions),
       IdToken: jwt.sign(idToken, PrivateKey.pem, {
@@ -240,7 +282,7 @@ export class JwtTokenGenerator implements TokenGenerator {
           "cognito:username": user.Username,
           email: attributeValue("email", user.Attributes),
           iat: authTime,
-          jti: uuid.v4(),
+          jti: randomUUID(),
         },
         PrivateKey.pem,
         {

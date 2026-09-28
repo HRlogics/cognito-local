@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import * as http from "node:http";
 import * as https from "node:https";
@@ -6,7 +7,6 @@ import cors from "cors";
 import express from "express";
 import type { Logger } from "pino";
 import Pino from "pino-http";
-import * as uuid from "uuid";
 import { CognitoError, UnsupportedError } from "../errors";
 import PublicKey from "../keys/cognitoLocal.public.json";
 import { AuthorizationCodeStore } from "../oauth2/authorizationCodeStore";
@@ -39,7 +39,7 @@ export const createServer = (
   const pino = Pino({
     logger,
     useLevel: "debug",
-    genReqId: () => uuid.v4().split("-")[0],
+    genReqId: () => randomUUID().split("-")[0],
     quietReqLogger: true,
     autoLogging: {
       ignore: (req) => req.method === "OPTIONS",

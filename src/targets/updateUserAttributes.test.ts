@@ -1,5 +1,5 @@
+import { randomUUID } from "node:crypto";
 import jwt from "jsonwebtoken";
-import * as uuid from "uuid";
 import { beforeEach, describe, expect, it, type MockedObject } from "vitest";
 import { ClockFake } from "../__tests__/clockFake";
 import { newMockCognitoService } from "../__tests__/mockCognitoService";
@@ -29,7 +29,7 @@ const validToken = jwt.sign(
     token_use: "access",
     scope: "aws.cognito.signin.user.admin",
     auth_time: new Date(),
-    jti: uuid.v4(),
+    jti: randomUUID(),
     client_id: "test",
     username: "0000-0000",
   },
@@ -41,6 +41,12 @@ const validToken = jwt.sign(
     keyid: "CognitoLocal",
   },
 );
+
+const validValueFor = (attr: string) => {
+  if (attr === "phone_number") return "+61400000000";
+  if (attr === "email") return "example@example.com";
+  return "new value";
+};
 
 describe("UpdateUserAttributes target", () => {
   let updateUserAttributes: UpdateUserAttributesTarget;
@@ -129,7 +135,7 @@ describe("UpdateUserAttributes target", () => {
           ClientMetadata: {
             client: "metadata",
           },
-          UserAttributes: [attribute(attr, "new value")],
+          UserAttributes: [attribute(attr, validValueFor(attr))],
         });
 
         const updatedUser = {
@@ -137,7 +143,7 @@ describe("UpdateUserAttributes target", () => {
           // value is in Attributes immediately
           Attributes: attributesAppend(
             user.Attributes,
-            attribute(attr, "new value"),
+            attribute(attr, validValueFor(attr)),
             attribute(`${attr}_verified`, "false"),
           ),
           UserLastModifiedDate: clock.get(),
@@ -150,6 +156,45 @@ describe("UpdateUserAttributes target", () => {
       });
     },
   );
+
+  it("keeps a pending email change when the phone number changes too", async () => {
+    mockUserPoolService.options.UserAttributeUpdateSettings = {
+      AttributesRequireVerificationBeforeUpdate: ["email", "phone_number"],
+    };
+    const pendingEmail = [
+      attribute("email", "new@example.com"),
+      attribute("email_verified", "false"),
+    ];
+    const user = TDB.user({ UnverifiedAttributeChanges: pendingEmail });
+    mockUserPoolService.getUserByUsername.mockResolvedValue(user);
+
+    await updateUserAttributes(TestContext, {
+      AccessToken: validToken,
+      UserAttributes: [attribute("phone_number", "+61400000000")],
+    });
+
+    expect(mockUserPoolService.saveUser).toHaveBeenCalledWith(
+      TestContext,
+      expect.objectContaining({
+        UnverifiedAttributeChanges: [
+          ...pendingEmail,
+          attribute("phone_number", "+61400000000"),
+          attribute("phone_number_verified", "false"),
+        ],
+      }),
+    );
+  });
+
+  it("rejects a malformed phone number", async () => {
+    await expect(
+      updateUserAttributes(TestContext, {
+        AccessToken: validToken,
+        UserAttributes: [attribute("phone_number", "abc")],
+      }),
+    ).rejects.toEqual(
+      new InvalidParameterError("Invalid phone number format."),
+    );
+  });
 
   describe.each(["email", "phone_number"] as const)(
     "when %s is in AttributesRequireVerificationBeforeUpdate",
@@ -167,14 +212,14 @@ describe("UpdateUserAttributes target", () => {
           ClientMetadata: {
             client: "metadata",
           },
-          UserAttributes: [attribute(attr, "new value")],
+          UserAttributes: [attribute(attr, validValueFor(attr))],
         });
 
         const updatedUser = {
           ...user,
           // value is in UnverifiedAttributeChanges pending verification
           UnverifiedAttributeChanges: [
-            attribute(attr, "new value"),
+            attribute(attr, validValueFor(attr)),
             attribute(`${attr}_verified`, "false"),
           ],
           UserLastModifiedDate: clock.get(),
@@ -240,14 +285,14 @@ describe("UpdateUserAttributes target", () => {
           ClientMetadata: {
             client: "metadata",
           },
-          UserAttributes: [attribute(attr, "new value")],
+          UserAttributes: [attribute(attr, validValueFor(attr))],
         });
 
         expect(mockUserPoolService.saveUser).toHaveBeenCalledWith(TestContext, {
           ...user,
           Attributes: attributesAppend(
             user.Attributes,
-            attribute(attr, "new value"),
+            attribute(attr, validValueFor(attr)),
             attribute(`${attr}_verified`, "false"),
           ),
           UserLastModifiedDate: clock.get(),
@@ -304,7 +349,7 @@ describe("UpdateUserAttributes target", () => {
               client: "metadata",
             },
             UserAttributes: attributes.map((attr: string) =>
-              attribute(attr, "new value"),
+              attribute(attr, validValueFor(attr)),
             ),
           });
 
@@ -313,7 +358,7 @@ describe("UpdateUserAttributes target", () => {
             Attributes: attributesAppend(
               user.Attributes,
               ...attributes.flatMap((attr: string) => [
-                attribute(attr, "new value"),
+                attribute(attr, validValueFor(attr)),
                 attribute(`${attr}_verified`, "false"),
               ]),
             ),
@@ -394,7 +439,7 @@ describe("UpdateUserAttributes target", () => {
               client: "metadata",
             },
             UserAttributes: attributes.map((attr: string) =>
-              attribute(attr, "new value"),
+              attribute(attr, validValueFor(attr)),
             ),
           });
 

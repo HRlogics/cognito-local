@@ -15,6 +15,7 @@ import type {
   UserPoolType,
   UserStatusType,
 } from "aws-sdk/clients/cognitoidentityserviceprovider";
+import jwt, { type JwtPayload } from "jsonwebtoken";
 import { InvalidParameterError } from "../errors";
 import type { AppClient } from "./appClient";
 import type { Clock } from "./clock";
@@ -94,6 +95,35 @@ export const attributesRemove = (
   ...toRemove: readonly string[]
 ): AttributeListType =>
   attributes?.filter((x) => !toRemove.includes(x.Name)) ?? [];
+
+// OIDC standard attributes Cognito copies into the id token (sub, email and the
+// *_verified flags are set separately). See
+// https://docs.aws.amazon.com/cognito/latest/developerguide/user-pool-settings-attributes.html
+const idTokenStandardAttributeNames = new Set([
+  "address",
+  "birthdate",
+  "family_name",
+  "gender",
+  "given_name",
+  "locale",
+  "middle_name",
+  "name",
+  "nickname",
+  "phone_number",
+  "picture",
+  "preferred_username",
+  "profile",
+  "updated_at",
+  "website",
+  "zoneinfo",
+]);
+
+export const idTokenStandardAttributes = (
+  attributes: AttributeListType | undefined,
+): AttributeListType =>
+  (attributes ?? []).filter((attr) =>
+    idTokenStandardAttributeNames.has(attr.Name),
+  );
 
 export const customAttributes = (
   attributes: AttributeListType | undefined,
@@ -395,6 +425,11 @@ export class UserPoolServiceImpl implements UserPoolService {
       { refreshToken },
       "UserPoolServiceImpl.getUserByRefreshToken",
     );
+    // our refresh tokens are JWTs carrying exp; an expired one no longer resolves to a user
+    const exp = (jwt.decode(refreshToken) as JwtPayload | null)?.exp;
+    if (exp !== undefined && exp * 1000 <= this.clock.get().getTime()) {
+      return null;
+    }
     const users = await this.listUsers(ctx);
     const user = users.find(
       (user) =>
@@ -615,6 +650,35 @@ export class UserPoolServiceFactoryImpl implements UserPoolServiceFactory {
   }
 }
 
+// Real Cognito enforces E.164 on phone_number: a leading "+" followed by 1–15
+// digits, leading digit non-zero. Anything else (letters, dashes, empty after
+// "+") is rejected with this exact message — clients assert against it.
+const E164_PHONE_NUMBER = /^\+[1-9]\d{1,14}$/;
+
+export const validatePhoneNumberAttribute = (
+  requestAttributes: AttributeListType | undefined,
+): void => {
+  const phoneNumber = attributeValue("phone_number", requestAttributes);
+  // a blank value deletes the attribute, so there is nothing to validate
+  if (phoneNumber && !E164_PHONE_NUMBER.test(phoneNumber)) {
+    throw new InvalidParameterError("Invalid phone number format.");
+  }
+};
+
+// Real Cognito requires email to have exactly one "@", non-empty local + domain
+// parts, and a TLD of at least two letters. Inputs like "a@@b.com" or
+// "a@b.com!!!" are rejected with this exact message — clients assert against it.
+const EMAIL = /^[^\s@]+@[^\s@]+\.[A-Za-z]{2,}$/;
+
+export const validateEmailAttribute = (
+  requestAttributes: AttributeListType | undefined,
+): void => {
+  const email = attributeValue("email", requestAttributes);
+  if (email && !EMAIL.test(email)) {
+    throw new InvalidParameterError("Invalid email address format.");
+  }
+};
+
 export const validatePermittedAttributeChanges = (
   requestAttributes: AttributeListType,
   schemaAttributes: SchemaAttributesListType,
@@ -678,6 +742,60 @@ export const hasUnverifiedContactAttributes = (
 ): boolean =>
   attributeValue("email_verified", userAttributesToSet) === "false" ||
   attributeValue("phone_number_verified", userAttributesToSet) === "false";
+
+/**
+ * Applies an attribute update request to a user, for UpdateUserAttributes and
+ * AdminUpdateUserAttributes alike:
+ * - attributes in AttributesRequireVerificationBeforeUpdate wait in UnverifiedAttributeChanges,
+ *   unless sent with their *_verified flag set to true or blank (a blank value deletes);
+ * - deleting a contact deletes its *_verified flag too, instead of marking it unverified;
+ * - pending changes the request doesn't touch are kept.
+ * Returns the updated Attributes and UnverifiedAttributeChanges, plus the immediate and delayed
+ * changes so the caller can decide whether to send a verification code.
+ */
+export const applyAttributeUpdate = (
+  user: User,
+  changes: AttributeListType,
+  attributesRequireVerificationBeforeUpdate: readonly string[] | undefined,
+): {
+  Attributes: AttributeListType;
+  UnverifiedAttributeChanges: AttributeListType | undefined;
+  immediateAttributes: AttributeListType;
+  delayedAttributes: AttributeListType;
+} => {
+  const requireVerification = (
+    attributesRequireVerificationBeforeUpdate ?? []
+  ).filter(
+    (name) =>
+      attributeValue(`${name}_verified`, changes) !== "true" &&
+      attributeValue(name, changes) !== "",
+  );
+  const deletedContactFlags = ["email", "phone_number"]
+    .filter((name) => attributeValue(name, changes) === "")
+    .map((name) => attribute(`${name}_verified`, ""));
+  const [immediateAttributes, delayedAttributes] =
+    splitImmediateAndDelayedAttributes(
+      [...changes, ...deletedContactFlags],
+      requireVerification,
+    );
+
+  const touched = new Set(
+    changes.flatMap((attr) => [attr.Name, `${attr.Name}_verified`]),
+  );
+  const pending = [
+    ...(user.UnverifiedAttributeChanges ?? []).filter(
+      (attr) => !touched.has(attr.Name),
+    ),
+    ...delayedAttributes,
+  ];
+
+  return {
+    Attributes: attributesAppend(user.Attributes, ...immediateAttributes),
+    UnverifiedAttributeChanges: pending.length > 0 ? pending : undefined,
+    immediateAttributes,
+    delayedAttributes,
+  };
+};
 
 /**
  * Splits user attributes into two lists:

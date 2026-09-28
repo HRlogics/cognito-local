@@ -5,6 +5,7 @@ import type {
 import jwt from "jsonwebtoken";
 import {
   CodeMismatchError,
+  INVALID_VERIFICATION_CODE,
   InvalidParameterError,
   NotAuthorizedError,
 } from "../errors";
@@ -42,7 +43,7 @@ export const VerifyUserAttribute =
     }
 
     if (req.Code !== user.AttributeVerificationCode) {
-      throw new CodeMismatchError();
+      throw new CodeMismatchError(INVALID_VERIFICATION_CODE);
     }
 
     const attributesToUpdate = [

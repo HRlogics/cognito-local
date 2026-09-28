@@ -1,4 +1,5 @@
 import type { AttributeListType } from "aws-sdk/clients/cognitoidentityserviceprovider";
+import jwt from "jsonwebtoken";
 import { beforeEach, describe, expect, it, type MockedObject } from "vitest";
 import { ClockFake } from "../__tests__/clockFake";
 import {
@@ -515,6 +516,35 @@ describe("User Pool Service", () => {
 
       expect(users).not.toBeNull();
       expect(users).toEqual([user2]);
+    });
+  });
+
+  describe("getUserByRefreshToken", () => {
+    it("resolves a live token and ignores an expired one", async () => {
+      const iat = Math.floor(currentDate.getTime() / 1000);
+      const live = jwt.sign({ iat, exp: iat + 60 }, "secret");
+      const expired = jwt.sign({ iat: iat - 120, exp: iat - 60 }, "secret");
+      const user = TDB.user({ RefreshTokens: [live, expired] });
+
+      const ds = newMockDataStore();
+      ds.get.mockImplementation((_ctx, key) =>
+        Promise.resolve(key === "Users" ? { [user.Username]: user } : null),
+      );
+      const userPool = new UserPoolServiceImpl(
+        mockClientsDataStore,
+        clock,
+        ds,
+        {
+          Id: "local",
+        },
+      );
+
+      expect(await userPool.getUserByRefreshToken(TestContext, live)).toEqual(
+        user,
+      );
+      expect(
+        await userPool.getUserByRefreshToken(TestContext, expired),
+      ).toBeNull();
     });
   });
 

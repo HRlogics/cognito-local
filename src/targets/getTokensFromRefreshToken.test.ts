@@ -40,6 +40,7 @@ describe("GetTokensFromRefreshToken target", () => {
       AccessToken: "new-access-token",
       IdToken: "new-id-token",
       RefreshToken: "new-refresh-token",
+      ExpiresIn: 3600,
     });
 
     const result = await getTokensFromRefreshToken(TestContext, {

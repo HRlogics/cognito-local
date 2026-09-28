@@ -58,7 +58,7 @@ export const GetTokensFromRefreshToken =
       AuthenticationResult: {
         AccessToken: tokens.AccessToken,
         IdToken: tokens.IdToken,
-        ExpiresIn: 3600,
+        ExpiresIn: tokens.ExpiresIn,
         TokenType: "Bearer",
       },
     };

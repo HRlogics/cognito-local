@@ -4,7 +4,6 @@ import type {
   InitiateAuthRequest,
   InitiateAuthResponse,
 } from "aws-sdk/clients/cognitoidentityserviceprovider";
-import { v4 } from "uuid";
 import {
   InvalidParameterError,
   NotAuthorizedError,
@@ -16,12 +15,13 @@ import {
 import type { Services, UserPoolService } from "../services";
 import type { AppClient } from "../services/appClient";
 import type { Context } from "../services/context";
+import * as srp from "../services/srp";
 import {
-  attributesToRecord,
   attributeValue,
   type MFAOption,
   type User,
 } from "../services/userPoolService";
+import { newPasswordChallenge } from "./challenges";
 import type { Target } from "./Target";
 
 export type InitiateAuthTarget = Target<
@@ -85,7 +85,7 @@ const smsMfaChallenge = async (
       CODE_DELIVERY_DESTINATION: deliveryDestination,
       USER_ID_FOR_SRP: user.Username,
     },
-    Session: v4(),
+    Session: crypto.randomUUID(),
   };
 };
 
@@ -100,7 +100,7 @@ const softwareTokenMfaChallenge = (user: User): InitiateAuthResponse => ({
         }
       : {}),
   },
-  Session: v4(),
+  Session: crypto.randomUUID(),
 });
 
 const enabledMfaMethods = (
@@ -146,7 +146,7 @@ const verifyMfaChallenge = async (
         USER_ID_FOR_SRP: user.Username,
         MFAS_CAN_CHOOSE: JSON.stringify(methods),
       },
-      Session: v4(),
+      Session: crypto.randomUUID(),
     };
   }
 
@@ -187,16 +187,6 @@ const verifyPasswordChallenge = async (
     AuthenticationResult: tokens,
   };
 };
-
-const newPasswordChallenge = (user: User): InitiateAuthResponse => ({
-  ChallengeName: "NEW_PASSWORD_REQUIRED",
-  ChallengeParameters: {
-    USER_ID_FOR_SRP: user.Username,
-    requiredAttributes: JSON.stringify([]),
-    userAttributes: JSON.stringify(attributesToRecord(user.Attributes)),
-  },
-  Session: v4(),
-});
 
 const userPasswordAuthFlow = async (
   ctx: Context,
@@ -244,11 +234,12 @@ const userPasswordAuthFlow = async (
   if (user.UserStatus === "RESET_REQUIRED") {
     throw new PasswordResetRequiredError();
   }
-  if (user.UserStatus === "FORCE_CHANGE_PASSWORD") {
-    return newPasswordChallenge(user);
-  }
+  // a wrong temporary password must fail, not open the new-password challenge
   if (user.Password !== req.AuthParameters.PASSWORD) {
     throw new NotAuthorizedError("Incorrect username or password.");
+  }
+  if (user.UserStatus === "FORCE_CHANGE_PASSWORD") {
+    return newPasswordChallenge(user);
   }
   if (user.UserStatus === "UNCONFIRMED") {
     throw new UserNotConfirmedException();
@@ -340,7 +331,7 @@ const refreshTokenAuthFlow = async (
       IdToken: tokens.IdToken,
       NewDeviceMetadata: undefined,
       TokenType: undefined,
-      ExpiresIn: undefined,
+      ExpiresIn: tokens.ExpiresIn,
     },
   };
 };
@@ -382,23 +373,43 @@ const userSrpAuthFlow = async (
     throw new UserNotConfirmedException();
   }
 
-  // Simplified SRP: return fake SRP_B, SALT, SECRET_BLOCK
-  // The emulator doesn't perform real SRP math — PASSWORD_VERIFIER
-  // response handler will verify the password directly.
-  const salt = crypto.randomBytes(16).toString("hex");
-  const srpB = crypto.randomBytes(128).toString("hex");
-  const secretBlock = crypto.randomBytes(64).toString("base64");
+  let A: bigint;
+  try {
+    A = BigInt(`0x${req.AuthParameters.SRP_A}`);
+  } catch {
+    throw new InvalidParameterError("Invalid SRP_A");
+  }
+  if (A % srp.N === BigInt(0)) {
+    throw new NotAuthorizedError();
+  }
+
+  const poolName = srp.poolNameFromId(userPool.options.Id);
+  const saltHex = crypto.randomBytes(16).toString("hex");
+  const verifier = srp.deriveVerifier(
+    poolName,
+    user.Username,
+    user.Password,
+    saltHex,
+  );
+  const { b, B } = srp.generateServerEphemeral(verifier);
+
+  const secretBlock = srp.encodeSecretBlock({
+    username: user.Username,
+    saltHex,
+    bHex: b.toString(16),
+    aHex: A.toString(16),
+  });
 
   return {
     ChallengeName: "PASSWORD_VERIFIER",
     ChallengeParameters: {
-      SALT: salt,
-      SRP_B: srpB,
+      SALT: saltHex,
       SECRET_BLOCK: secretBlock,
+      SRP_B: B.toString(16),
       USER_ID_FOR_SRP: user.Username,
       USERNAME: user.Username,
     },
-    Session: v4(),
+    Session: crypto.randomUUID(),
   };
 };
 
@@ -481,7 +492,7 @@ const customAuthFlow = async (
       ...challengeResult.publicChallengeParameters,
       USER_ID_FOR_SRP: user.Username,
     },
-    Session: v4(),
+    Session: crypto.randomUUID(),
   };
 };
 

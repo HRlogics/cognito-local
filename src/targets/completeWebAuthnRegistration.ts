@@ -1,5 +1,5 @@
+import { randomUUID } from "node:crypto";
 import jwt from "jsonwebtoken";
-import * as uuid from "uuid";
 import { InvalidParameterError, UserNotFoundError } from "../errors";
 import type { Services } from "../services";
 import type { Token } from "../services/tokenGenerator";
@@ -38,7 +38,7 @@ export const CompleteWebAuthnRegistration =
 
     const credentials = user._webauthnCredentials ?? [];
     credentials.push({
-      CredentialId: uuid.v4(),
+      CredentialId: randomUUID(),
       FriendlyCredentialName: req.Credential?.friendlyName,
       RelyingPartyId: "localhost",
       AuthenticatorAttachment: "platform",

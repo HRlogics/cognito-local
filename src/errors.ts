@@ -27,9 +27,13 @@ export class UsernameExistsError extends CognitoError {
   }
 }
 
+/** What Cognito says for a wrong ConfirmSignUp / ConfirmForgotPassword / VerifyUserAttribute code */
+export const INVALID_VERIFICATION_CODE =
+  "Invalid verification code provided, please try again.";
+
 export class CodeMismatchError extends CognitoError {
-  public constructor() {
-    super("CodeMismatchException", "Incorrect confirmation code");
+  public constructor(message = "Incorrect confirmation code") {
+    super("CodeMismatchException", message);
   }
 }
 

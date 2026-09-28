@@ -86,6 +86,72 @@ describe(
       });
     });
 
+    it("completes NEW_PASSWORD_REQUIRED with a working refresh token and the new password", async () => {
+      const client = Cognito();
+      const userPoolId = (
+        await client.createUserPool({ PoolName: "test" }).promise()
+      ).UserPool?.Id!;
+      const clientId = (
+        await client
+          .createUserPoolClient({ UserPoolId: userPoolId, ClientName: "test" })
+          .promise()
+      ).UserPoolClient?.ClientId!;
+      await client
+        .adminCreateUser({
+          MessageAction: "SUPPRESS",
+          TemporaryPassword: "temp",
+          Username: "abc",
+          UserPoolId: userPoolId,
+        })
+        .promise();
+
+      const challenge = await client
+        .adminInitiateAuth({
+          AuthFlow: "ADMIN_USER_PASSWORD_AUTH",
+          AuthParameters: { USERNAME: "abc", PASSWORD: "temp" },
+          ClientId: clientId,
+          UserPoolId: userPoolId,
+        })
+        .promise();
+      expect(challenge.ChallengeName).toEqual("NEW_PASSWORD_REQUIRED");
+
+      const done = await client
+        .adminRespondToAuthChallenge({
+          ChallengeName: "NEW_PASSWORD_REQUIRED",
+          ChallengeResponses: { USERNAME: "abc", NEW_PASSWORD: "new-pass" },
+          ClientId: clientId,
+          Session: challenge.Session,
+          UserPoolId: userPoolId,
+        })
+        .promise();
+
+      const refreshed = await client
+        .adminInitiateAuth({
+          AuthFlow: "REFRESH_TOKEN_AUTH",
+          AuthParameters: {
+            REFRESH_TOKEN: done.AuthenticationResult?.RefreshToken!,
+          },
+          ClientId: clientId,
+          UserPoolId: userPoolId,
+        })
+        .promise();
+      expect(refreshed.AuthenticationResult?.AccessToken).toEqual(
+        expect.any(String),
+      );
+
+      const again = await client
+        .adminInitiateAuth({
+          AuthFlow: "ADMIN_USER_PASSWORD_AUTH",
+          AuthParameters: { USERNAME: "abc", PASSWORD: "new-pass" },
+          ClientId: clientId,
+          UserPoolId: userPoolId,
+        })
+        .promise();
+      expect(again.AuthenticationResult?.AccessToken).toEqual(
+        expect.any(String),
+      );
+    });
+
     it("can authenticate users with ADMIN_USER_PASSWORD_AUTH auth flow", async () => {
       const client = Cognito();
 
@@ -111,6 +177,14 @@ describe(
             { Name: "email", Value: "example@example.com" },
             { Name: "email_verified", Value: "true" },
           ],
+          Username: "abc",
+          UserPoolId: userPoolId,
+        })
+        .promise();
+      await client
+        .adminSetUserPassword({
+          Password: "def",
+          Permanent: true,
           Username: "abc",
           UserPoolId: userPoolId,
         })
@@ -202,6 +276,14 @@ describe(
             { Name: "email", Value: "example@example.com" },
             { Name: "email_verified", Value: "true" },
           ],
+          Username: "abc",
+          UserPoolId: userPoolId,
+        })
+        .promise();
+      await client
+        .adminSetUserPassword({
+          Password: "def",
+          Permanent: true,
           Username: "abc",
           UserPoolId: userPoolId,
         })

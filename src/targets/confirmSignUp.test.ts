@@ -5,7 +5,11 @@ import { newMockTriggers } from "../__tests__/mockTriggers";
 import { newMockUserPoolService } from "../__tests__/mockUserPoolService";
 import { TestContext } from "../__tests__/testContext";
 import * as TDB from "../__tests__/testDataBuilder";
-import { CodeMismatchError, NotAuthorizedError } from "../errors";
+import {
+  CodeMismatchError,
+  INVALID_VERIFICATION_CODE,
+  NotAuthorizedError,
+} from "../errors";
 import type { Triggers, UserPoolService } from "../services";
 import { attribute, attributesAppend } from "../services/userPoolService";
 import { ConfirmSignUp, type ConfirmSignUpTarget } from "./confirmSignUp";
@@ -57,7 +61,7 @@ describe("ConfirmSignUp target", () => {
         Username: user.Username,
         ConfirmationCode: "123456",
       }),
-    ).rejects.toBeInstanceOf(CodeMismatchError);
+    ).rejects.toEqual(new CodeMismatchError(INVALID_VERIFICATION_CODE));
   });
 
   describe("when code matches", () => {
@@ -84,6 +88,35 @@ describe("ConfirmSignUp target", () => {
         UserLastModifiedDate: newNow,
         UserStatus: "CONFIRMED",
       });
+    });
+
+    it("marks the attribute the code was sent to as verified", async () => {
+      mockUserPoolService.options.AutoVerifiedAttributes = ["email"];
+      const user = TDB.user({
+        Attributes: [
+          { Name: "email", Value: "a@example.com" },
+          { Name: "email_verified", Value: "false" },
+        ],
+        ConfirmationCode: "456789",
+        UserStatus: "UNCONFIRMED",
+      });
+      mockUserPoolService.getUserByUsername.mockResolvedValue(user);
+
+      await confirmSignUp(TestContext, {
+        ClientId: "clientId",
+        Username: user.Username,
+        ConfirmationCode: "456789",
+      });
+
+      expect(mockUserPoolService.saveUser).toHaveBeenCalledWith(
+        TestContext,
+        expect.objectContaining({
+          Attributes: [
+            { Name: "email", Value: "a@example.com" },
+            { Name: "email_verified", Value: "true" },
+          ],
+        }),
+      );
     });
 
     describe("when PostConfirmation trigger configured", () => {

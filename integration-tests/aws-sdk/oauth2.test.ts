@@ -134,7 +134,7 @@ describe(
       expect(tokens.id_token).toBeTruthy();
       expect(tokens.refresh_token).toBeTruthy();
       expect(tokens.token_type).toBe("Bearer");
-      expect(tokens.expires_in).toBe(3600);
+      expect(tokens.expires_in).toBe(24 * 60 * 60);
     });
 
     it("returns the login form again with an error message on wrong password", async () => {

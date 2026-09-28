@@ -43,6 +43,12 @@ describe("RespondToAuthChallenge target", () => {
   beforeEach(() => {
     clock = new ClockFake(currentDate);
     mockTokenGenerator = newMockTokenGenerator();
+    mockTokenGenerator.generate.mockResolvedValue({
+      AccessToken: "access",
+      IdToken: "id",
+      RefreshToken: "refresh",
+      ExpiresIn: 3600,
+    });
     mockTriggers = newMockTriggers();
     mockUserPoolService = newMockUserPoolService({
       Id: userPoolClient.UserPoolId,
@@ -155,6 +161,7 @@ describe("RespondToAuthChallenge target", () => {
           AccessToken: "access",
           IdToken: "id",
           RefreshToken: "refresh",
+          ExpiresIn: 3600,
         });
         mockUserPoolService.listUserGroupMembership.mockResolvedValue([]);
 
@@ -292,6 +299,7 @@ describe("RespondToAuthChallenge target", () => {
         AccessToken: "access",
         IdToken: "id",
         RefreshToken: "refresh",
+        ExpiresIn: 3600,
       });
       mockUserPoolService.listUserGroupMembership.mockResolvedValue([]);
 
@@ -368,6 +376,7 @@ describe("RespondToAuthChallenge target", () => {
         AccessToken: "a",
         IdToken: "i",
         RefreshToken: "r",
+        ExpiresIn: 3600,
       });
       const result = await respondToAuthChallenge(TestContext, {
         ClientId: userPoolClient.ClientId,

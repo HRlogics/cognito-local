@@ -1,4 +1,4 @@
-import * as uuid from "uuid";
+import { randomUUID } from "node:crypto";
 import type { Services } from "../services";
 import type { Terms } from "../services/userPoolService";
 import type { Target } from "./Target";
@@ -24,7 +24,7 @@ export const CreateTerms =
     const now = clock.get();
 
     const terms = {
-      TermsId: uuid.v4(),
+      TermsId: randomUUID(),
       UserPoolId: req.UserPoolId,
       TermsText: req.TermsText,
       Version: req.Version,
