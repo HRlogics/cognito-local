@@ -37,7 +37,7 @@ export const DefaultConfig: Config = {
     UsernameAttributes: ["email"],
   },
   TokenConfig: {
-    IssuerDomain: `http://${hostname}:${port}`,
+    IssuerDomain: process.env.ISSUER_DOMAIN ?? `http://${hostname}:${port}`,
   },
   KMSConfig: {
     credentials: {

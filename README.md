@@ -2,7 +2,7 @@
 
 **122 SDK targets + 7 OAuth2/OIDC endpoints = 100% AWS Cognito User Pool API coverage**
 
-`Build: passing` | `Tests: 801 passing` | `License: MIT` | `Node >= 24.21`
+`Build: passing` | `Tests: 806 passing` | `License: MIT` | `Node >= 24.21`
 
 A local Amazon Cognito User Pool emulator for development and testing. Drop-in replacement for the real service -- point your SDK at `http://localhost:9229` and go.
 
@@ -37,6 +37,7 @@ A local Amazon Cognito User Pool emulator for development and testing. Drop-in r
 - [Configuration](#configuration)
   - [Lambda Triggers](#lambda-triggers)
   - [Environment Variables](#environment-variables)
+  - [Test endpoints](#test-endpoints)
   - [Data Storage](#data-storage)
 - [API Parity Summary](#api-parity-summary)
 - [Tech Stack](#tech-stack)
@@ -211,7 +212,7 @@ mkdir -p .cognito && echo '{}' > .cognito/config.json
 | `ServerConfig.https` | boolean | `false` | Enable TLS |
 | `ServerConfig.cert` | string | -- | Path to TLS cert |
 | `ServerConfig.key` | string | -- | Path to TLS key |
-| `TokenConfig.IssuerDomain` | string | `http://localhost:9229` | JWT issuer domain |
+| `TokenConfig.IssuerDomain` | string | `http://<HOST>:<PORT>` | JWT issuer domain; `ISSUER_DOMAIN` overrides it |
 | `LambdaClient.endpoint` | string | -- | Local Lambda endpoint (e.g. serverless-offline) |
 | `LambdaClient.region` | string | `local` | Lambda region |
 | `TriggerFunctions` | object | `{}` | Trigger-to-function mapping |
@@ -246,9 +247,29 @@ Supported triggers: PreSignUp, PostConfirmation, PostAuthentication, PreAuthenti
 |----------|-------------|
 | `PORT` | Override listen port |
 | `HOST` | Override listen hostname |
+| `ISSUER_DOMAIN` | JWT issuer domain, e.g. the address clients reach the container at; overrides `TokenConfig.IssuerDomain` |
 | `DEBUG` | Enable verbose logging |
 | `CODE` | Fixed confirmation code (instead of random) |
 | `NODE_TLS_REJECT_UNAUTHORIZED=0` | Accept self-signed certs for Lambda endpoints |
+
+### Test endpoints
+
+Helpers for test suites live under `/_`, outside the Cognito API.
+
+`POST /_/users` seeds confirmed users with a verified email and a permanent password in one call, the `AdminCreateUser` + `AdminSetUserPassword` pair per user. An email that already exists keeps its Username and gets the password, so re-seeding is safe.
+
+```bash
+curl -X POST http://localhost:9229/_/users -H 'Content-Type: application/json' -d '{
+  "UserPoolId": "us-east-1_mypool",
+  "Users": [
+    { "Email": "alice@example.com", "Password": "Password!1" },
+    { "Email": "bob@example.com", "Password": "Password!1" }
+  ]
+}'
+# {"Users":[{"Email":"alice@example.com","Username":"<uuid>"},{"Email":"bob@example.com","Username":"<uuid>"}]}
+```
+
+Cognito errors come back as `400 {"__type", "message"}`, like the API.
 
 ### Data Storage
 
@@ -301,7 +322,7 @@ This project will become `@nimbus/plugin-cognito` as part of the [Nimbus](https:
 
 1. Fork the repo and create a feature branch.
 2. Write tests for new targets (see existing `*.test.ts` files for patterns).
-3. Run `npm test` and ensure all 801+ tests pass.
+3. Run `npm test` and ensure all 806+ tests pass.
 4. Submit a pull request.
 
 ---
